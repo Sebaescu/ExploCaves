@@ -27,10 +27,11 @@ public class MainMenu extends Application {
         Label title = new Label("ExploCaves");
         title.setStyle("-fx-font-size: 24; -fx-font-weight: bold;");
 
-        Button startButton = new Button("Start");
-        Button closeButton = new Button("Close");
+        Button facilButton = new Button("Modo Facil");
+        Button dificilButton = new Button("Modo Dificil");
+        Button closeButton = new Button("Cerrar");
 
-        HBox buttonsBox = new HBox(50, startButton, closeButton);
+        HBox buttonsBox = new HBox(50, facilButton,dificilButton, closeButton);
         buttonsBox.setAlignment(Pos.CENTER);
 
         StackPane.setAlignment(title, Pos.TOP_CENTER);
@@ -42,12 +43,16 @@ public class MainMenu extends Application {
 
         Scene scene = new Scene(root, 400, 400);
 
-        startButton.setOnAction(event -> {
+        facilButton.setOnAction(event -> {
             primaryStage.hide();
             App game = new App();
             game.startJuego(new Stage());
         });
-
+        dificilButton.setOnAction(event -> {
+            primaryStage.hide();
+            App game = new App();
+            //game.startJuegoDificil(new Stage());
+        });
         closeButton.setOnAction(event -> primaryStage.close());
 
         primaryStage.setTitle("ExploCaves");
