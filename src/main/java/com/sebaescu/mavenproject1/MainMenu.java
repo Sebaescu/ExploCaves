@@ -13,8 +13,12 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 public class MainMenu extends Application {
@@ -22,16 +26,27 @@ public class MainMenu extends Application {
     @Override
     public void start(Stage primaryStage) {
         StackPane root = new StackPane();
-        root.setStyle("-fx-background-color: #b3b3b3;");
+
+        // Agregar una imagen de fondo
+        Image backgroundImage = new Image("com/sebaescu/mavenproject1/fondo.png");
+        ImageView backgroundImageView = new ImageView(backgroundImage);
+        backgroundImageView.setFitWidth(primaryStage.getWidth());
+        backgroundImageView.setFitHeight(primaryStage.getHeight());
+        root.getChildren().add(backgroundImageView);
 
         Label title = new Label("ExploCaves");
-        title.setStyle("-fx-font-size: 24; -fx-font-weight: bold;");
+        title.setStyle("-fx-font-size: 36; -fx-font-weight: bold; -fx-text-fill: white;");
 
-        Button facilButton = new Button("Modo Facil");
-        Button dificilButton = new Button("Modo Dificil");
+        Button facilButton = new Button("Modo Fácil");
+        facilButton.setStyle("-fx-background-color: #8FDB8F; -fx-text-fill: white;"); // Verde pastel
+
+        Button dificilButton = new Button("Modo Difícil");
+        dificilButton.setStyle("-fx-background-color: #FF6961; -fx-text-fill: white;"); // Rojo pastel
+
         Button closeButton = new Button("Cerrar");
+        closeButton.setStyle("-fx-background-color: #696969; -fx-text-fill: white;"); // Negro pastel
 
-        HBox buttonsBox = new HBox(50, facilButton,dificilButton, closeButton);
+        HBox buttonsBox = new HBox(50, facilButton, dificilButton, closeButton);
         buttonsBox.setAlignment(Pos.CENTER);
 
         StackPane.setAlignment(title, Pos.TOP_CENTER);
@@ -42,6 +57,11 @@ public class MainMenu extends Application {
         root.getChildren().addAll(title, buttonsBox);
 
         Scene scene = new Scene(root, 400, 400);
+
+        primaryStage.widthProperty().addListener((obs, oldVal, newVal) ->
+                backgroundImageView.setFitWidth((double) newVal));
+        primaryStage.heightProperty().addListener((obs, oldVal, newVal) ->
+                backgroundImageView.setFitHeight((double) newVal));
 
         facilButton.setOnAction(event -> {
             primaryStage.hide();
