@@ -17,8 +17,6 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 public class MainMenu extends Application {
@@ -75,6 +73,9 @@ public class MainMenu extends Application {
         });
         closeButton.setOnAction(event -> primaryStage.close());
 
+        // Establecer el tamaño máximo de la ventana al maximizado
+        primaryStage.setMaximized(true);
+
         primaryStage.setTitle("ExploCaves");
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -84,3 +85,4 @@ public class MainMenu extends Application {
         launch(args);
     }
 }
+

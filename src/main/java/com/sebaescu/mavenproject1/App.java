@@ -6,15 +6,17 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.KeyCode;
-import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Random;
+import javafx.scene.Node;
+import javafx.scene.input.KeyCode;
+import javafx.scene.layout.GridPane;
 
 public class App extends Application {
 
@@ -25,7 +27,7 @@ public class App extends Application {
     private static final int COLUMNAS_DIFICIL = COLUMNAS * 2;
     private static final int CELDA_SIZE_DIFICIL = CELDA_SIZE / 2;
     private int jugadorFila, jugadorColumna;
-    private Stage stage;
+    private Stage stage; // Referencia al escenario principal
     private Timeline timeline;
     private ImageView jugadorImageView, salidaImageView;
     private Image jugadorDer = new Image("com/sebaescu/mavenproject1/JugadorDer.png");
@@ -42,15 +44,12 @@ public class App extends Application {
 
     public void startJuego(Stage primaryStage) {
         this.stage = primaryStage;
-        primaryStage.setMaximized(true); // Establecer la ventana como maximizada
 
         // Generar el laberinto antes de iniciar el juego
         generarLaberintoConConexion();
 
         // Crear el GridPane una vez
         gridPane = new GridPane();
-
-        // Establecer un fondo oscuro
         gridPane.setStyle("-fx-background-color: #333333;");
 
         // Crear y agregar las celdas del laberinto
@@ -77,26 +76,29 @@ public class App extends Application {
 
         // Encontrar una celda de camino para que el jugador comience
         encontrarCeldaInicio();
-        // Crear una propiedad para seguir el tamaño de la ventana
-        gridPane.prefWidthProperty().bind(primaryStage.widthProperty());
-        gridPane.prefHeightProperty().bind(primaryStage.heightProperty());
+
         // Agregar la imagen del jugador
         jugadorImageView = new ImageView(jugadorDer);
         jugadorImageView.setFitWidth(CELDA_SIZE);
         jugadorImageView.setFitHeight(CELDA_SIZE);
         gridPane.add(jugadorImageView, jugadorColumna, jugadorFila);
 
-        Scene scene = new Scene(gridPane);
-        scene.setOnKeyPressed(event -> manejarTeclaPresionada(event.getCode()));
+        Scene scene = new Scene(gridPane, COLUMNAS * CELDA_SIZE, FILAS * CELDA_SIZE);
+        scene.widthProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS,FILAS));
+        scene.heightProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS,FILAS));
+        scene.setOnKeyPressed(event -> manejarTeclaPresionada(event.getCode(),FILAS,COLUMNAS));
         scene.setOnKeyReleased(event -> detenerMovimiento());
+
+        // Restaurar el tamaño de la ventana al maximizado al volver al menú
+        stage.setMaximized(true);
 
         primaryStage.setTitle("ExploCaves");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
-    private void manejarTeclaPresionada(KeyCode code) {
-        detenerMovimiento(); // Detener el movimiento actual antes de comenzar uno nuevo
+    private void manejarTeclaPresionada(KeyCode code, int filas, int columnas) {
+        detenerMovimiento();
 
         timeline = new Timeline(new KeyFrame(Duration.millis(80), event -> {
             int deltaFila = 0;
@@ -119,7 +121,7 @@ public class App extends Application {
                     break;
             }
 
-            mover(deltaFila, deltaColumna);
+            mover(deltaFila, deltaColumna, filas, columnas);
         }));
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
@@ -131,12 +133,11 @@ public class App extends Application {
         }
     }
 
-    private void mover(int deltaFila, int deltaColumna) {
+    private void mover(int deltaFila, int deltaColumna, int filas, int columnas) {
         int nuevaFila = jugadorFila + deltaFila;
         int nuevaColumna = jugadorColumna + deltaColumna;
 
-        if (esMovimientoValido(nuevaFila, nuevaColumna)) {
-            // Actualizar la posición del jugador
+        if (esMovimientoValido(nuevaFila, nuevaColumna, filas, columnas)) {
             gridPane.getChildren().remove(jugadorImageView);
             gridPane.add(jugadorImageView, nuevaColumna, nuevaFila);
 
@@ -150,12 +151,11 @@ public class App extends Application {
         }
     }
 
-    private boolean esMovimientoValido(int fila, int columna) {
-        return fila >= 0 && fila < FILAS_DIFICIL && columna >= 0 && columna < COLUMNAS_DIFICIL && laberinto[fila][columna] != 1;
+    private boolean esMovimientoValido(int fila, int columna, int filas, int columnas) {
+        return fila >= 0 && fila < filas && columna >= 0 && columna < columnas && laberinto[fila][columna] != 1;
     }
 
     private void generarLaberintoConConexion() {
-        // Inicializar el laberinto con todos los valores a 1 (paredes)
         laberinto = new int[FILAS][COLUMNAS];
         for (int i = 0; i < FILAS; i++) {
             for (int j = 0; j < COLUMNAS; j++) {
@@ -163,18 +163,12 @@ public class App extends Application {
             }
         }
 
-        // Generar el laberinto con el algoritmo Recursive Backtracking
         recursiveBacktracking(1, 1);
-
-        // Colocar la salida en una posición aleatoria
-        laberinto[random.nextInt(FILAS)][random.nextInt(COLUMNAS)] = 2;
+        laberinto[random.nextInt(FILAS - 2) + 1][random.nextInt(COLUMNAS - 2) + 1] = 2;
     }
 
     private void recursiveBacktracking(int x, int y) {
-        // Marcamos la posición actual como camino
         laberinto[y][x] = 0;
-
-        // Direcciones posibles
         int[][] direcciones = {{0, 2}, {2, 0}, {0, -2}, {-2, 0}};
         Collections.shuffle(Arrays.asList(direcciones));
 
@@ -190,26 +184,20 @@ public class App extends Application {
     }
 
     private void encontrarCeldaInicio() {
-        // Buscar una celda aleatoria dentro del laberinto (evitando las filas y columnas de los bordes)
         do {
             jugadorFila = random.nextInt(FILAS - 1) + 1;
             jugadorColumna = random.nextInt(COLUMNAS - 1) + 1;
         } while (laberinto[jugadorFila][jugadorColumna] != 0);
     }
+
     public void startJuegoDificil(Stage primaryStage) {
         this.stage = primaryStage;
-        primaryStage.setMaximized(true); // Establecer la ventana como maximizada
 
-        // Generar el laberinto difícil antes de iniciar el juego
         generarLaberintoConConexionDificil();
 
-        // Crear el GridPane una vez
         gridPane = new GridPane();
-
-        // Establecer un fondo oscuro
         gridPane.setStyle("-fx-background-color: #333333;");
 
-        // Crear y agregar las celdas del laberinto difícil
         for (int i = 0; i < FILAS_DIFICIL; i++) {
             for (int j = 0; j < COLUMNAS_DIFICIL; j++) {
                 ImageView imageView;
@@ -231,19 +219,21 @@ public class App extends Application {
             }
         }
 
-        // Encontrar una celda de camino para que el jugador comience
         encontrarCeldaInicio();
-        gridPane.prefWidthProperty().bind(primaryStage.widthProperty());
-        gridPane.prefHeightProperty().bind(primaryStage.heightProperty());
-        // Agregar la imagen del jugador
+
         jugadorImageView = new ImageView(jugadorDer);
         jugadorImageView.setFitWidth(CELDA_SIZE_DIFICIL);
         jugadorImageView.setFitHeight(CELDA_SIZE_DIFICIL);
         gridPane.add(jugadorImageView, jugadorColumna, jugadorFila);
 
-        Scene scene = new Scene(gridPane);
-        scene.setOnKeyPressed(event -> manejarTeclaPresionada(event.getCode()));
+        Scene scene = new Scene(gridPane, COLUMNAS_DIFICIL * CELDA_SIZE_DIFICIL, FILAS_DIFICIL * CELDA_SIZE_DIFICIL);
+        scene.widthProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS_DIFICIL,FILAS_DIFICIL));
+        scene.heightProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS_DIFICIL,FILAS_DIFICIL));
+        scene.setOnKeyPressed(event -> manejarTeclaPresionada(event.getCode(),FILAS_DIFICIL,COLUMNAS_DIFICIL));
         scene.setOnKeyReleased(event -> detenerMovimiento());
+
+        // Restaurar el tamaño de la ventana al maximizado al volver al menú
+        stage.setMaximized(true);
 
         primaryStage.setTitle("ExploCaves - Difícil");
         primaryStage.setScene(scene);
@@ -251,7 +241,6 @@ public class App extends Application {
     }
 
     private void generarLaberintoConConexionDificil() {
-        // Inicializar el laberinto difícil con todos los valores a 1 (paredes)
         laberinto = new int[FILAS_DIFICIL][COLUMNAS_DIFICIL];
         for (int i = 0; i < FILAS_DIFICIL; i++) {
             for (int j = 0; j < COLUMNAS_DIFICIL; j++) {
@@ -259,18 +248,12 @@ public class App extends Application {
             }
         }
 
-        // Generar el laberinto difícil con el algoritmo Recursive Backtracking
         recursiveBacktrackingDificil(1, 1);
-
-        // Colocar la salida en una posición aleatoria en el laberinto difícil
-        laberinto[random.nextInt(FILAS_DIFICIL)][random.nextInt(COLUMNAS_DIFICIL)] = 2;
+        laberinto[random.nextInt(FILAS_DIFICIL - 2) + 1][random.nextInt(COLUMNAS_DIFICIL - 2) + 1] = 2;
     }
 
     private void recursiveBacktrackingDificil(int x, int y) {
-        // Marcamos la posición actual como camino
         laberinto[y][x] = 0;
-
-        // Direcciones posibles
         int[][] direcciones = {{0, 2}, {2, 0}, {0, -2}, {-2, 0}};
         Collections.shuffle(Arrays.asList(direcciones));
 
@@ -284,12 +267,30 @@ public class App extends Application {
             }
         }
     }
+    private void escalarImagenes(int columnas, int filas) {
+        double nuevoAncho = stage.getScene().getWidth() / columnas;
+        double nuevoAlto = stage.getScene().getHeight() / filas;
 
+        // Escala las imágenes de las celdas del laberinto
+        for (Node node : gridPane.getChildren()) {
+            if (node instanceof ImageView) {
+                ImageView imageView = (ImageView) node;
+                imageView.setFitWidth(nuevoAncho);
+                imageView.setFitHeight(nuevoAlto);
+            }
+        }
 
+        // Escala la imagen del jugador
+        jugadorImageView.setFitWidth(nuevoAncho);
+        jugadorImageView.setFitHeight(nuevoAlto);
 
+        // Escala la imagen de la salida
+        salidaImageView.setFitWidth(nuevoAncho);
+        salidaImageView.setFitHeight(nuevoAlto);
+    }
     private void mostrarMensaje(String mensaje) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(AlertType.INFORMATION);
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("¡Ganaste!");
             alert.setHeaderText(null);
             alert.setContentText(mensaje);
