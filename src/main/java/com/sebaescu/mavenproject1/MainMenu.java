@@ -71,7 +71,7 @@ public class MainMenu extends Application {
         dificilButton.setOnAction(event -> {
             primaryStage.hide();
             App game = new App();
-            //game.startJuegoDificil(new Stage());
+            game.startJuegoDificil(new Stage());
         });
         closeButton.setOnAction(event -> primaryStage.close());
 
