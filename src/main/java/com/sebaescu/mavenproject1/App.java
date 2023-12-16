@@ -7,6 +7,8 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
@@ -19,6 +21,14 @@ public class App extends Application {
     private static final int CELDA_SIZE = 40;
     private static final int FILAS = 10;
     private static final int COLUMNAS = 10;
+    private int jugadorFila = 1;
+    private int jugadorColumna = 1;
+    private Stage stage;
+    private Timeline timeline;
+    private ImageView jugadorImageView;
+    private Image jugadorDer = new Image("com/sebaescu/mavenproject1/JugadorDer.png");
+    private Image jugadorIzq = new Image("com/sebaescu/mavenproject1/JugadorIzq.png");
+    private GridPane gridPane;
 
     private int[][] laberinto = {
             {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -33,21 +43,52 @@ public class App extends Application {
             {1, 0, 0, 0, 0, 0, 0, 0, 0, 2} // 2 representa la salida
     };
 
-    private int jugadorFila = 1;
-    private int jugadorColumna = 0;
-    private Stage stage;
-    private Timeline timeline;
-
     @Override
     public void start(Stage primaryStage) {
         MainMenu menuPrincipal = new MainMenu();
         menuPrincipal.start(primaryStage);
     }
-    
-    public void startJuego(Stage primaryStage) {
-        this.stage = primaryStage; // Asigna el Stage a la variable de instancia
 
-        GridPane gridPane = crearLaberinto();
+    public void startJuego(Stage primaryStage) {
+        this.stage = primaryStage;
+
+        // Crear el GridPane una vez
+        gridPane = new GridPane();
+
+        // Agregar la imagen de fondo como fondo del laberinto
+        ImageView fondoImageView = new ImageView(new Image("com/sebaescu/mavenproject1/fondo.png"));
+        fondoImageView.setFitWidth(COLUMNAS * CELDA_SIZE);
+        fondoImageView.setFitHeight(FILAS * CELDA_SIZE);
+        gridPane.add(fondoImageView, 0, 0, COLUMNAS, FILAS);
+
+        // Crear y agregar las celdas del laberinto
+        for (int i = 0; i < FILAS; i++) {
+            for (int j = 0; j < COLUMNAS; j++) {
+                if (laberinto[i][j] == 1) {
+                    ImageView obstaculoImageView = new ImageView(new Image("com/sebaescu/mavenproject1/obstaculo.png"));
+                    obstaculoImageView.setFitWidth(CELDA_SIZE);
+                    obstaculoImageView.setFitHeight(CELDA_SIZE);
+                    gridPane.add(obstaculoImageView, j, i);
+                } else if (laberinto[i][j] == 2) {
+                    // Agregar la imagen de salida
+                    ImageView salidaImageView = new ImageView(new Image("com/sebaescu/mavenproject1/salida.png"));
+                    salidaImageView.setFitWidth(CELDA_SIZE);
+                    salidaImageView.setFitHeight(CELDA_SIZE);
+                    gridPane.add(salidaImageView, j, i);
+                } else {
+                    ImageView caminoImageView = new ImageView(new Image("com/sebaescu/mavenproject1/camino.png"));
+                    caminoImageView.setFitWidth(CELDA_SIZE);
+                    caminoImageView.setFitHeight(CELDA_SIZE);
+                    gridPane.add(caminoImageView, j, i);
+                }
+            }
+        }
+
+        // Agregar la imagen del jugador
+        jugadorImageView = new ImageView(new Image("com/sebaescu/mavenproject1/JugadorDer.png"));
+        jugadorImageView.setFitWidth(CELDA_SIZE);
+        jugadorImageView.setFitHeight(CELDA_SIZE);
+        gridPane.add(jugadorImageView, jugadorColumna, jugadorFila);
 
         Scene scene = new Scene(gridPane, COLUMNAS * CELDA_SIZE, FILAS * CELDA_SIZE);
         scene.setOnKeyPressed(event -> manejarTeclaPresionada(event.getCode()));
@@ -56,28 +97,6 @@ public class App extends Application {
         primaryStage.setTitle("Laberinto Game");
         primaryStage.setScene(scene);
         primaryStage.show();
-    }
-
-    private GridPane crearLaberinto() {
-        GridPane gridPane = new GridPane();
-
-        for (int i = 0; i < FILAS; i++) {
-            for (int j = 0; j < COLUMNAS; j++) {
-                Rectangle celda = new Rectangle(CELDA_SIZE, CELDA_SIZE);
-
-                if (laberinto[i][j] == 1) {
-                    celda.setFill(Color.BLACK);
-                } else if (laberinto[i][j] == 2) {
-                    celda.setFill(Color.GREEN);
-                } else {
-                    celda.setFill(Color.WHITE);
-                }
-
-                gridPane.add(celda, j, i);
-            }
-        }
-
-        return gridPane;
     }
 
     private void manejarTeclaPresionada(KeyCode code) {
@@ -96,9 +115,11 @@ public class App extends Application {
                     break;
                 case LEFT:
                     deltaColumna = -1;
+                    jugadorImageView.setImage(jugadorIzq);
                     break;
                 case RIGHT:
                     deltaColumna = 1;
+                    jugadorImageView.setImage(jugadorDer);
                     break;
             }
 
@@ -119,9 +140,9 @@ public class App extends Application {
         int nuevaColumna = jugadorColumna + deltaColumna;
 
         if (esMovimientoValido(nuevaFila, nuevaColumna)) {
-            GridPane gridPane = crearLaberinto();
-            Rectangle jugador = new Rectangle(CELDA_SIZE, CELDA_SIZE, Color.BLUE);
-            gridPane.add(jugador, nuevaColumna, nuevaFila);
+            // Actualizar la posición del jugador
+            gridPane.getChildren().remove(jugadorImageView);
+            gridPane.add(jugadorImageView, nuevaColumna, nuevaFila);
 
             jugadorFila = nuevaFila;
             jugadorColumna = nuevaColumna;
@@ -129,12 +150,6 @@ public class App extends Application {
             if (laberinto[jugadorFila][jugadorColumna] == 2) {
                 mostrarMensaje("¡Has ganado!");
             }
-
-            Scene scene = new Scene(gridPane, COLUMNAS * CELDA_SIZE, FILAS * CELDA_SIZE);
-            scene.setOnKeyPressed(event -> manejarTeclaPresionada(event.getCode()));
-            scene.setOnKeyReleased(event -> detenerMovimiento());
-
-            stage.setScene(scene);
         }
     }
 
@@ -163,4 +178,3 @@ public class App extends Application {
         launch(args);
     }
 }
-
