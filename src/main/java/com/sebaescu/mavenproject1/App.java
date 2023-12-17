@@ -1,5 +1,6 @@
 package com.sebaescu.mavenproject1;
 
+import java.util.ArrayList;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
@@ -10,9 +11,9 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import javafx.scene.Node;
 import javafx.scene.input.KeyCode;
@@ -21,8 +22,8 @@ import javafx.scene.layout.GridPane;
 public class App extends Application {
 
     private static final int CELDA_SIZE = 40;
-    private static final int FILAS = 15;
-    private static final int COLUMNAS = 15;
+    private static final int FILAS = 20;
+    private static final int COLUMNAS = 20;
     private static final int FILAS_DIFICIL = FILAS * 2;
     private static final int COLUMNAS_DIFICIL = COLUMNAS * 2;
     private static final int CELDA_SIZE_DIFICIL = CELDA_SIZE / 2;
@@ -35,6 +36,8 @@ public class App extends Application {
     private GridPane gridPane;
     private int[][] laberinto;
     private Random random = new Random();
+    private List<Cofre> cofres = new ArrayList<>();
+    private boolean[][] cofresAbiertos; // Matriz para rastrear los cofres abiertos
 
     @Override
     public void start(Stage primaryStage) {
@@ -51,7 +54,7 @@ public class App extends Application {
         // Crear el GridPane una vez
         gridPane = new GridPane();
         gridPane.setStyle("-fx-background-color: #333333;");
-
+        cofresAbiertos = new boolean[FILAS][COLUMNAS];
         // Crear y agregar las celdas del laberinto
         for (int i = 0; i < FILAS; i++) {
             for (int j = 0; j < COLUMNAS; j++) {
@@ -82,7 +85,10 @@ public class App extends Application {
         jugadorImageView.setFitWidth(CELDA_SIZE);
         jugadorImageView.setFitHeight(CELDA_SIZE);
         gridPane.add(jugadorImageView, jugadorColumna, jugadorFila);
-
+        
+        generarCofres(9,4,FILAS,COLUMNAS);
+        agregarCofresAlGrid();
+        
         Scene scene = new Scene(gridPane, COLUMNAS * CELDA_SIZE, FILAS * CELDA_SIZE);
         scene.widthProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS,FILAS));
         scene.heightProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS,FILAS));
@@ -99,6 +105,11 @@ public class App extends Application {
 
     private void manejarTeclaPresionada(KeyCode code, int filas, int columnas) {
         detenerMovimiento();
+
+        if (code == KeyCode.E) {
+            abrirCofre();
+            return;
+        }
 
         timeline = new Timeline(new KeyFrame(Duration.millis(80), event -> {
             int deltaFila = 0;
@@ -126,6 +137,7 @@ public class App extends Application {
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
     }
+
 
     private void detenerMovimiento() {
         if (timeline != null) {
@@ -189,6 +201,89 @@ public class App extends Application {
             jugadorColumna = random.nextInt(COLUMNAS - 1) + 1;
         } while (laberinto[jugadorFila][jugadorColumna] != 0);
     }
+    private void generarCofres(int cantidad, int distanciaMinima, int filas, int columnas) {
+        // Lógica para generar cofres en ubicaciones aleatorias de camino
+        for (int i = 0; i < cantidad; i++) {
+            int intentos = 0;
+            while (intentos < 100) { // Limitar la cantidad de intentos para evitar bucles infinitos
+                int cofreFila = random.nextInt(filas - 1) + 1;
+                int cofreColumna = random.nextInt(columnas - 1) + 1;
+
+                if (laberinto[cofreFila][cofreColumna] == 0 && !hayCofreEnUbicacion(cofreFila, cofreColumna) && cumpleDistanciaMinima(cofreFila, cofreColumna, distanciaMinima)) {
+                    cofres.add(new Cofre(cofreFila, cofreColumna, new Image("com/sebaescu/mavenproject1/cofreCerrado.png")));
+                    break; // Sale del bucle si el cofre se agregó correctamente
+                }
+                intentos++;
+            }
+        }
+    }
+
+    private boolean cumpleDistanciaMinima(int fila, int columna, int distanciaMinima) {
+        // Verifica si hay al menos la distancia mínima especificada de celdas de camino entre el cofre y cualquier otro cofre existente
+        for (Cofre cofreExistente : cofres) {
+            int distancia = Math.abs(fila - cofreExistente.getFila()) + Math.abs(columna - cofreExistente.getColumna());
+            if (distancia < distanciaMinima) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+
+    private boolean hayCofreEnUbicacion(int fila, int columna) {
+        for (Cofre cofre : cofres) {
+            if (cofre.getFila() == fila && cofre.getColumna() == columna) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void agregarCofresAlGrid() {
+        for (Cofre cofre : cofres) {
+            ImageView cofreImageView = new ImageView(cofre.getImagen());
+            cofreImageView.setFitWidth(CELDA_SIZE_DIFICIL);
+            cofreImageView.setFitHeight(CELDA_SIZE_DIFICIL);
+            gridPane.add(cofreImageView, cofre.getColumna(), cofre.getFila());
+        }
+    }
+    private void abrirCofre() {
+        int fila = jugadorFila;
+        int columna = jugadorColumna;
+
+        // Verificar si el jugador está en una celda con un cofre cerrado y no abierto
+        if (esCeldaConCofre(fila, columna) && !cofresAbiertos[fila][columna]) {
+            // Marcar el cofre como abierto
+            cofresAbiertos[fila][columna] = true;
+
+            // Cambiar todas las imágenes de la celda a cofreAbierto.png
+            for (Node node : gridPane.getChildren()) {
+                if (node instanceof ImageView) {
+                    ImageView imageView = (ImageView) node;
+                    int row = GridPane.getRowIndex(imageView);
+                    int col = GridPane.getColumnIndex(imageView);
+
+                    // Verificar si la ImageView está en la misma celda que el cofre
+                    if (row == fila && col == columna) {
+                        imageView.setImage(new Image("com/sebaescu/mavenproject1/cofreAbierto.png"));
+                    }
+                }
+            }
+
+            // Restaurar la imagen del jugador después de abrir el cofre
+            jugadorImageView.setImage(jugadorDer);
+        }
+    }
+
+    private boolean esCeldaConCofre(int fila, int columna) {
+        for (Cofre cofre : cofres) {
+            if (cofre.getFila() == fila && cofre.getColumna() == columna) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public void startJuegoDificil(Stage primaryStage) {
         this.stage = primaryStage;
@@ -197,7 +292,7 @@ public class App extends Application {
 
         gridPane = new GridPane();
         gridPane.setStyle("-fx-background-color: #333333;");
-
+        cofresAbiertos = new boolean[FILAS_DIFICIL][COLUMNAS_DIFICIL];
         for (int i = 0; i < FILAS_DIFICIL; i++) {
             for (int j = 0; j < COLUMNAS_DIFICIL; j++) {
                 ImageView imageView;
@@ -225,7 +320,10 @@ public class App extends Application {
         jugadorImageView.setFitWidth(CELDA_SIZE_DIFICIL);
         jugadorImageView.setFitHeight(CELDA_SIZE_DIFICIL);
         gridPane.add(jugadorImageView, jugadorColumna, jugadorFila);
-
+        
+        generarCofres(14,7,FILAS_DIFICIL,COLUMNAS_DIFICIL);
+        agregarCofresAlGrid();
+        
         Scene scene = new Scene(gridPane, COLUMNAS_DIFICIL * CELDA_SIZE_DIFICIL, FILAS_DIFICIL * CELDA_SIZE_DIFICIL);
         scene.widthProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS_DIFICIL,FILAS_DIFICIL));
         scene.heightProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS_DIFICIL,FILAS_DIFICIL));
