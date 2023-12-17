@@ -27,10 +27,10 @@ public class App extends Application {
     private static final int FILAS_DIFICIL = FILAS * 2;
     private static final int COLUMNAS_DIFICIL = COLUMNAS * 2;
     private static final int CELDA_SIZE_DIFICIL = CELDA_SIZE / 2;
-    private int jugadorFila, jugadorColumna;
     private Stage stage; // Referencia al escenario principal
     private Timeline timeline;
-    private ImageView jugadorImageView, salidaImageView;
+    private ImageView salidaImageView;
+    private Jugador jugador;
     private Image jugadorDer = new Image("com/sebaescu/mavenproject1/JugadorDer.png");
     private Image jugadorIzq = new Image("com/sebaescu/mavenproject1/JugadorIzq.png");
     private GridPane gridPane;
@@ -81,11 +81,8 @@ public class App extends Application {
         // Encontrar una celda de camino para que el jugador comience
         encontrarCeldaInicio();
 
-        // Agregar la imagen del jugador
-        jugadorImageView = new ImageView(jugadorDer);
-        jugadorImageView.setFitWidth(CELDA_SIZE);
-        jugadorImageView.setFitHeight(CELDA_SIZE);
-        gridPane.add(jugadorImageView, jugadorColumna, jugadorFila);
+        jugador.getImageView().setImage(jugadorDer);
+        gridPane.add(jugador.getImageView(), jugador.getColumna(), jugador.getFila());
         
         generarCofres(9,4,FILAS,COLUMNAS);
         agregarCofresAlGrid();
@@ -112,7 +109,11 @@ public class App extends Application {
             abrirCofre();
             return;
         }
-
+        if (code == KeyCode.F) {
+            // Realizar la acción de combate al presionar la tecla F
+            confrontarEnemigo();
+            return;
+        }
         timeline = new Timeline(new KeyFrame(Duration.millis(80), event -> {
             int deltaFila = 0;
             int deltaColumna = 0;
@@ -126,11 +127,11 @@ public class App extends Application {
                     break;
                 case A:
                     deltaColumna = -1;
-                    jugadorImageView.setImage(jugadorIzq);
+                    jugador.getImageView().setImage(jugadorIzq);
                     break;
                 case D:
                     deltaColumna = 1;
-                    jugadorImageView.setImage(jugadorDer);
+                    jugador.getImageView().setImage(jugadorDer);
                     break;
             }
 
@@ -148,25 +149,42 @@ public class App extends Application {
     }
 
     private void mover(int deltaFila, int deltaColumna, int filas, int columnas) {
-        int nuevaFila = jugadorFila + deltaFila;
-        int nuevaColumna = jugadorColumna + deltaColumna;
+        int nuevaFila = jugador.getFila() + deltaFila;
+        int nuevaColumna = jugador.getColumna() + deltaColumna;
 
         if (esMovimientoValido(nuevaFila, nuevaColumna, filas, columnas)) {
-            gridPane.getChildren().remove(jugadorImageView);
-            gridPane.add(jugadorImageView, nuevaColumna, nuevaFila);
+            gridPane.getChildren().remove(jugador.getImageView());
+            gridPane.add(jugador.getImageView(), nuevaColumna, nuevaFila);
 
-            jugadorFila = nuevaFila;
-            jugadorColumna = nuevaColumna;
+            jugador.setFila(nuevaFila);
+            jugador.setColumna(nuevaColumna);
 
-            if (laberinto[jugadorFila][jugadorColumna] == 2) {
+            if (laberinto[jugador.getFila()][jugador.getColumna()] == 2) {
                 salidaImageView.setImage(new Image("com/sebaescu/mavenproject1/salida.png"));
                 mostrarMensaje("¡Has ganado!");
             }
         }
     }
 
+
     private boolean esMovimientoValido(int fila, int columna, int filas, int columnas) {
-        return fila >= 0 && fila < filas && columna >= 0 && columna < columnas && laberinto[fila][columna] != 1;
+        // Verifica que la celda esté dentro de los límites del laberinto
+        if (fila < 0 || fila >= filas || columna < 0 || columna >= columnas) {
+            return false;
+        }
+
+        // Verifica si la celda es un obstáculo o tiene un enemigo no derrotado
+        if (laberinto[fila][columna] == 1) {
+            return false;
+        }
+
+        for (Enemigo enemigo : enemigos) {
+            if (enemigo.getFila() == fila && enemigo.getColumna() == columna && !enemigo.isDerrotado()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void generarLaberintoConConexion() {
@@ -199,9 +217,13 @@ public class App extends Application {
 
     private void encontrarCeldaInicio() {
         do {
-            jugadorFila = random.nextInt(FILAS - 1) + 1;
-            jugadorColumna = random.nextInt(COLUMNAS - 1) + 1;
-        } while (laberinto[jugadorFila][jugadorColumna] != 0);
+            int jugadorFila = random.nextInt(FILAS - 1) + 1;
+            int jugadorColumna = random.nextInt(COLUMNAS - 1) + 1;
+            if (laberinto[jugadorFila][jugadorColumna] == 0) {
+                jugador = new Jugador(jugadorFila, jugadorColumna, 1, jugadorDer);
+                break;
+            }
+        } while (true);
     }
     private void generarCofres(int cantidad, int distanciaMinima, int filas, int columnas) {
         // Lógica para generar cofres en ubicaciones aleatorias de camino
@@ -251,32 +273,28 @@ public class App extends Application {
         }
     }
     private void abrirCofre() {
-        int fila = jugadorFila;
-        int columna = jugadorColumna;
+        int fila = jugador.getFila();
+        int columna = jugador.getColumna();
 
-        // Verificar si el jugador está en una celda con un cofre cerrado y no abierto
         if (esCeldaConCofre(fila, columna) && !cofresAbiertos[fila][columna]) {
-            // Marcar el cofre como abierto
             cofresAbiertos[fila][columna] = true;
 
-            // Cambiar todas las imágenes de la celda a cofreAbierto.png
             for (Node node : gridPane.getChildren()) {
                 if (node instanceof ImageView) {
                     ImageView imageView = (ImageView) node;
                     int row = GridPane.getRowIndex(imageView);
                     int col = GridPane.getColumnIndex(imageView);
 
-                    // Verificar si la ImageView está en la misma celda que el cofre
                     if (row == fila && col == columna) {
                         imageView.setImage(new Image("com/sebaescu/mavenproject1/cofreAbierto.png"));
                     }
                 }
             }
 
-            // Restaurar la imagen del jugador después de abrir el cofre
-            jugadorImageView.setImage(jugadorDer);
+            jugador.getImageView().setImage(jugadorDer);
         }
     }
+
 
     private boolean esCeldaConCofre(int fila, int columna) {
         for (Cofre cofre : cofres) {
@@ -299,10 +317,11 @@ public class App extends Application {
 
                     if (laberinto[enemigoFila][enemigoColumna] == 0 && !hayCofreEnUbicacion(enemigoFila, enemigoColumna)
                             && !hayEnemigoEnUbicacion(enemigoFila, enemigoColumna)) {
-                        Image imagenEnemigo = new Image("com/sebaescu/mavenproject1/Enemigo" + i + ".png");
+                        int tipoEnemigoIndex = i - 1; // Obtén el índice del tipo de enemigo
+                        String tipoEnemigo = Enemigo.tiposDeEnemigos.get(tipoEnemigoIndex); // Obtén el tipo de enemigo según el índice
                         int nivelPoder = random.nextInt(4) + 1; // Nivel de poder entre 1 y 4
 
-                        enemigos.add(new Enemigo(enemigoFila, enemigoColumna, nivelPoder, imagenEnemigo));
+                        enemigos.add(new Enemigo(enemigoFila, enemigoColumna, nivelPoder, tipoEnemigo));
                         break; // Sale del bucle si el enemigo se agregó correctamente
                     }
                     intentos++;
@@ -310,6 +329,8 @@ public class App extends Application {
             }
         }
     }
+
+
 
     private boolean hayEnemigoEnUbicacion(int fila, int columna) {
         for (Enemigo enemigo : enemigos) {
@@ -326,7 +347,62 @@ public class App extends Application {
             gridPane.add(enemigoImageView, enemigo.getColumna(), enemigo.getFila());
         }
     }
+    private void confrontarEnemigo() {
+        int fila = jugador.getFila();
+        int columna = jugador.getColumna();
 
+        // Verifica enemigos en un radio de 1 alrededor del jugador
+        for (int i = Math.max(0, fila - 1); i <= Math.min(FILAS - 1, fila + 1); i++) {
+            for (int j = Math.max(0, columna - 1); j <= Math.min(COLUMNAS - 1, columna + 1); j++) {
+                if (i != fila || j != columna) {  // Excluye la posición del jugador
+                    confrontarEnemigoEnPosicion(i, j);
+                }
+            }
+        }
+    }
+
+    private void confrontarEnemigoEnPosicion(int fila, int columna) {
+        for (Enemigo enemigo : enemigos) {
+            if (enemigo.getFila() == fila && enemigo.getColumna() == columna) {
+                confrontar(enemigo);
+                break;
+            }
+        }
+    }
+    private void confrontar(Enemigo enemigo) {
+        if (!enemigo.isDerrotado()) {
+            int probabilidad = calcularProbabilidad(enemigo.getNivelPoder(), jugador.getNivel());
+            if (random.nextInt(100) < probabilidad) {
+                enemigo.setDerrotado(true);
+                System.out.println("Has derrotado al enemigo. ¡Bien hecho!");
+
+                // Encuentra la ImageView correspondiente al enemigo en el GridPane
+                for (Node node : gridPane.getChildren()) {
+                    if (node instanceof ImageView) {
+                        ImageView imageView = (ImageView) node;
+                        Enemigo enemigoEnImageView = (Enemigo) imageView.getUserData();
+                        if (enemigoEnImageView == enemigo) {
+                            // Obtener el nombre del archivo de la imagen del enemigo
+                            String nombreImagen = enemigo.getNombreImagen();
+                            // Cambiar la imagen del enemigo derrotado
+                            imageView.setImage(new Image(nombreImagen.replace(".png", "Derrotado.png")));
+                            break;
+                        }
+                    }
+                }
+            } else {
+                System.out.println("No pudiste derrotar al enemigo. ¡Cuidado!");
+                // Aquí puedes implementar lógica adicional, como reducir la salud del jugador, etc.
+            }
+        } else {
+            System.out.println("El enemigo ya está derrotado. Puedes pasar.");
+        }
+    }
+
+    private int calcularProbabilidad(int nivelEnemigo, int nivelJugador) {
+        int diferenciaNiveles = nivelEnemigo - nivelJugador;
+        return Math.max(50 - (diferenciaNiveles * 5), 0);
+    }
     public void startJuegoDificil(Stage primaryStage) {
         this.stage = primaryStage;
 
@@ -358,10 +434,10 @@ public class App extends Application {
 
         encontrarCeldaInicio();
 
-        jugadorImageView = new ImageView(jugadorDer);
-        jugadorImageView.setFitWidth(CELDA_SIZE_DIFICIL);
-        jugadorImageView.setFitHeight(CELDA_SIZE_DIFICIL);
-        gridPane.add(jugadorImageView, jugadorColumna, jugadorFila);
+        encontrarCeldaInicio();
+
+        jugador.getImageView().setImage(jugadorDer);
+        gridPane.add(jugador.getImageView(), jugador.getColumna(), jugador.getFila());
         
         generarCofres(14,7,FILAS_DIFICIL,COLUMNAS_DIFICIL);
         agregarCofresAlGrid();
@@ -422,8 +498,8 @@ public class App extends Application {
         }
 
         // Escala la imagen del jugador
-        jugadorImageView.setFitWidth(nuevoAncho);
-        jugadorImageView.setFitHeight(nuevoAlto);
+        jugador.getImageView().setFitWidth(nuevoAncho);
+        jugador.getImageView().setFitHeight(nuevoAlto);
 
         // Escala la imagen de la salida
         salidaImageView.setFitWidth(nuevoAncho);
