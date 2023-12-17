@@ -16,7 +16,7 @@ public class Jugador {
     private int nivel;
     private Image imagen;
     private ImageView imageView;
-    private Label labelNivel; // Nuevo campo para la etiqueta del nivel del jugador
+    private Label labelNivel; 
 
     public Jugador(int fila, int columna, int nivel, Image imagen) {
         this.fila = fila;
@@ -93,5 +93,6 @@ public class Jugador {
         int diferenciaNiveles = nivelEnemigo - nivel;
         return Math.max(0.5, 0.5 - (diferenciaNiveles / 2.0) * 0.1);
     }
+    
 }
 

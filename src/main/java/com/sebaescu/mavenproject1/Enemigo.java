@@ -8,7 +8,6 @@ package com.sebaescu.mavenproject1;
  *
  * @author Sebastian
  */
-import java.net.URL;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -26,7 +25,7 @@ public class Enemigo {
     private Image imagenEnemigo;
     private boolean derrotado;
     private String tipo;
-    public static final ArrayList<String> tiposDeEnemigos = new ArrayList<>(Arrays.asList("Lobo", "Gusano", "Araña"));
+    public static final ArrayList<String> tiposDeEnemigos = new ArrayList<>(Arrays.asList("Lobo", "Gusano", "Arana"));
     private Random random = new Random();
     private Label labelNivel;
     private ImageView imageView;
@@ -43,11 +42,15 @@ public class Enemigo {
     }
 
     public ImageView getImageView() {
-        imageView = new ImageView(imagenEnemigo);
-        imageView.setFitWidth(App.CELDA_SIZE);
-        imageView.setFitHeight(App.CELDA_SIZE);
+        if (imageView == null) {
+            // Si la instancia no ha sido creada, crea una nueva
+            imageView = new ImageView(imagenEnemigo);
+            imageView.setFitWidth(App.CELDA_SIZE);
+            imageView.setFitHeight(App.CELDA_SIZE);
+        }
         return imageView;
     }
+
 
     public int getFila() {
         return fila;
@@ -91,14 +94,15 @@ public class Enemigo {
     }
 
     private void configurarEstiloLabel() {
+        // Configurar el estilo del label según tus necesidades
         labelNivel.setFont(Font.font("Arial", 14));
         labelNivel.setTextFill(Color.WHITE);
     }
-
     public void actualizarImagenEnemigoDerrotado() {
         // Cambia la imagen del enemigo derrotado
-        if (derrotado) {
-            imageView.setImage(new Image("com/sebaescu/mavenproject1/" + tipo + "Derrotado.png"));
+        if (isDerrotado()) {
+            getImageView().setImage(new Image("com/sebaescu/mavenproject1/" + tipo + "Derrotado.png"));
+            System.out.println("Imagen del enemigo derrotado actualizada a: " + tipo+ "Derrotado.png");
         }
     }
 
