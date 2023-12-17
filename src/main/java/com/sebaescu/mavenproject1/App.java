@@ -105,17 +105,17 @@ public class App extends Application {
             int deltaColumna = 0;
 
             switch (code) {
-                case UP:
+                case W:
                     deltaFila = -1;
                     break;
-                case DOWN:
+                case S:
                     deltaFila = 1;
                     break;
-                case LEFT:
+                case A:
                     deltaColumna = -1;
                     jugadorImageView.setImage(jugadorIzq);
                     break;
-                case RIGHT:
+                case D:
                     deltaColumna = 1;
                     jugadorImageView.setImage(jugadorDer);
                     break;
@@ -301,8 +301,14 @@ public class App extends Application {
     }
 
     private void volverAlMenu() {
-        MainMenu menuPrincipal = new MainMenu();
-        menuPrincipal.start(stage);
+        Platform.runLater(() -> {
+            // Crea una nueva instancia del MainMenu y muestra la ventana maximizada
+            MainMenu menuPrincipal = new MainMenu();
+            Stage primaryStageMenu = new Stage();
+            menuPrincipal.start(primaryStageMenu);
+            primaryStageMenu.setMaximized(true);
+            stage.close();  // Cierra la ventana actual del juego
+        });
     }
 
     public static void main(String[] args) {

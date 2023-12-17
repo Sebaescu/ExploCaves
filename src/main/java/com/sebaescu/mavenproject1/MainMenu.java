@@ -16,10 +16,16 @@ import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 public class MainMenu extends Application {
+
+    private static final double BUTTON_FONT_SIZE = 20;
+    private static final double TITLE_FONT_SIZE = 50;
 
     @Override
     public void start(Stage primaryStage) {
@@ -28,38 +34,43 @@ public class MainMenu extends Application {
         // Agregar una imagen de fondo
         Image backgroundImage = new Image("com/sebaescu/mavenproject1/fondo.png");
         ImageView backgroundImageView = new ImageView(backgroundImage);
-        backgroundImageView.setFitWidth(primaryStage.getWidth());
-        backgroundImageView.setFitHeight(primaryStage.getHeight());
         root.getChildren().add(backgroundImageView);
 
         Label title = new Label("ExploCaves");
-        title.setStyle("-fx-font-size: 36; -fx-font-weight: bold; -fx-text-fill: white;");
+        title.setStyle("-fx-font-size: " + TITLE_FONT_SIZE + "; -fx-font-weight: bold; -fx-text-fill: white;");
 
-        Button facilButton = new Button("Modo Fácil");
-        facilButton.setStyle("-fx-background-color: #8FDB8F; -fx-text-fill: white;"); // Verde pastel
+        Button facilButton = createStyledButton("Modo Fácil", "#8FDB8F");
+        Button dificilButton = createStyledButton("Modo Difícil", "#FF6961");
+        Button closeButton = createStyledButton("Cerrar", "#696969");
 
-        Button dificilButton = new Button("Modo Difícil");
-        dificilButton.setStyle("-fx-background-color: #FF6961; -fx-text-fill: white;"); // Rojo pastel
-
-        Button closeButton = new Button("Cerrar");
-        closeButton.setStyle("-fx-background-color: #696969; -fx-text-fill: white;"); // Negro pastel
-
-        HBox buttonsBox = new HBox(50, facilButton, dificilButton, closeButton);
+        HBox buttonsBox = new HBox(20, facilButton, dificilButton, closeButton);
         buttonsBox.setAlignment(Pos.CENTER);
 
-        StackPane.setAlignment(title, Pos.TOP_CENTER);
-        StackPane.setAlignment(buttonsBox, Pos.CENTER);
-        StackPane.setMargin(title, new javafx.geometry.Insets(50, 0, 0, 0));
-        StackPane.setMargin(buttonsBox, new javafx.geometry.Insets(50, 0, 0, 0));
+        VBox vbox = new VBox(20, title, buttonsBox);
+        vbox.setAlignment(Pos.CENTER);
 
-        root.getChildren().addAll(title, buttonsBox);
+        // Ajustar el tamaño del VBox para que ocupe todo el espacio disponible
+        VBox.setVgrow(buttonsBox, Priority.ALWAYS);
 
-        Scene scene = new Scene(root, 400, 400);
+        StackPane.setAlignment(vbox, Pos.CENTER);
+        StackPane.setMargin(vbox, new javafx.geometry.Insets(50, 0, 0, 0));
 
-        primaryStage.widthProperty().addListener((obs, oldVal, newVal) ->
-                backgroundImageView.setFitWidth((double) newVal));
-        primaryStage.heightProperty().addListener((obs, oldVal, newVal) ->
-                backgroundImageView.setFitHeight((double) newVal));
+        root.getChildren().addAll(vbox);
+
+        // Escuchar cambios en el tamaño de la ventana
+        primaryStage.widthProperty().addListener((obs, oldVal, newVal) -> {
+            backgroundImageView.setFitWidth(newVal.doubleValue());
+            updateFontSize(primaryStage, title, facilButton, dificilButton, closeButton);
+        });
+
+        primaryStage.heightProperty().addListener((obs, oldVal, newVal) -> {
+            backgroundImageView.setFitHeight(newVal.doubleValue());
+            updateFontSize(primaryStage, title, facilButton, dificilButton, closeButton);
+        });
+
+        primaryStage.maximizedProperty().addListener((obs, oldVal, newVal) -> {
+            updateFontSize(primaryStage, title, facilButton, dificilButton, closeButton);
+        });
 
         facilButton.setOnAction(event -> {
             primaryStage.hide();
@@ -77,12 +88,36 @@ public class MainMenu extends Application {
         primaryStage.setMaximized(true);
 
         primaryStage.setTitle("ExploCaves");
+        // Usar dimensiones iniciales de la ventana
+        Scene scene = new Scene(root, primaryStage.getWidth(), primaryStage.getHeight());
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+
+    private Button createStyledButton(String text, String backgroundColor) {
+        Button button = new Button(text);
+        button.setStyle("-fx-background-color: " + backgroundColor + "; -fx-text-fill: white;");
+        button.setMinSize(200, 50);
+        setButtonFontSize(button, BUTTON_FONT_SIZE);
+        return button;
+    }
+
+    private void setButtonFontSize(Button button, double fontSize) {
+        button.setFont(new Font("Arial", fontSize));
+    }
+
+    private void updateFontSize(Stage stage, Label title, Button facilButton, Button dificilButton, Button closeButton) {
+        double scaleFactor = stage.isMaximized() ? 1.5 : 1.0;
+
+        title.setStyle("-fx-font-size: " + (TITLE_FONT_SIZE * scaleFactor) +
+                "; -fx-font-weight: bold; -fx-text-fill: white;");
+
+        setButtonFontSize(facilButton, BUTTON_FONT_SIZE * scaleFactor);
+        setButtonFontSize(dificilButton, BUTTON_FONT_SIZE * scaleFactor);
+        setButtonFontSize(closeButton, BUTTON_FONT_SIZE * scaleFactor);
     }
 
     public static void main(String[] args) {
         launch(args);
     }
 }
-
