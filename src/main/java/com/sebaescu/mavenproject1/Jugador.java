@@ -4,29 +4,36 @@
  */
 package com.sebaescu.mavenproject1;
 
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
 
-/**
- *
- * @author Sebastian
- */
 public class Jugador {
     private int fila;
     private int columna;
     private int nivel;
     private Image imagen;
     private ImageView imageView;
+    private Label labelNivel; // Nuevo campo para la etiqueta del nivel del jugador
 
     public Jugador(int fila, int columna, int nivel, Image imagen) {
         this.fila = fila;
         this.columna = columna;
         this.nivel = nivel;
         this.imagen = imagen;
-        this.imageView = new ImageView(imagen); // Crear la instancia de ImageView aquí
+        this.imageView = new ImageView(imagen);
+        this.labelNivel = new Label("Nivel " + nivel); // Inicializar la etiqueta del nivel aquí
+        configurarEstiloLabel(); // Método para configurar el estilo del label (puedes definirlo según tus necesidades)
     }
+
     public ImageView getImageView() {
         return imageView;
+    }
+
+    public Label getLabelNivel() {
+        return labelNivel;
     }
 
     public int getFila() {
@@ -51,32 +58,40 @@ public class Jugador {
 
     public void setNivel(int nivel) {
         this.nivel = nivel;
+        actualizarTextoLabel(); // Actualizar el texto del label cuando cambia el nivel
     }
+
     public void aumentarNivel() {
         nivel++;
+        actualizarTextoLabel(); // Actualizar el texto del label al aumentar el nivel
     }
-    // Nuevo método para combatir con un enemigo
+
+    private void actualizarTextoLabel() {
+        labelNivel.setText("Nivel " + nivel);
+    }
+
+    private void configurarEstiloLabel() {
+        // Configurar el estilo del label según tus necesidades
+        labelNivel.setFont(Font.font("Arial", 14));
+        labelNivel.setTextFill(Color.WHITE);
+    }
+
+    // Métodos adicionales para combatir y calcular la probabilidad de derrota
     public boolean combatir(Enemigo enemigo) {
-        // Calcular la probabilidad de derrota
         double probabilidadDerrota = calcularProbabilidadDerrota(enemigo.getNivelPoder());
-
-        // Generar un número aleatorio entre 0 y 1
         double resultadoCombate = Math.random();
-
-        // El jugador derrota al enemigo si el resultado es menor que la probabilidad de derrota
         boolean jugadorGana = resultadoCombate < probabilidadDerrota;
 
         if (jugadorGana) {
-            // Aumentar el nivel del jugador al derrotar al enemigo
             aumentarNivel();
         }
 
         return jugadorGana;
     }
 
-    // Nuevo método para calcular la probabilidad de derrota
     private double calcularProbabilidadDerrota(int nivelEnemigo) {
         int diferenciaNiveles = nivelEnemigo - nivel;
         return Math.max(0.5, 0.5 - (diferenciaNiveles / 2.0) * 0.1);
     }
 }
+

@@ -8,12 +8,16 @@ package com.sebaescu.mavenproject1;
  *
  * @author Sebastian
  */
-import static java.lang.Math.random;
+import java.net.URL;
+import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 
 public class Enemigo {
     private int fila;
@@ -24,18 +28,22 @@ public class Enemigo {
     private String tipo;
     public static final ArrayList<String> tiposDeEnemigos = new ArrayList<>(Arrays.asList("Lobo", "Gusano", "Araña"));
     private Random random = new Random();
+    private Label labelNivel;
+    private ImageView imageView;
 
-    public Enemigo(int fila, int columna, int nivelPoder, String tipo) {
+    public Enemigo(int fila, int columna, int nivelPoder, String tipoEnemigo) {
         this.fila = fila;
         this.columna = columna;
         this.nivelPoder = nivelPoder;
         this.tipo = tiposDeEnemigos.get(random.nextInt(tiposDeEnemigos.size()));
         this.derrotado = false;
-        this.imagenEnemigo = new Image("com/sebaescu/mavenproject1/" + tipo + ".png");  // La imagen se basa en el tipo
+        this.labelNivel = new Label("Nivel " + nivelPoder); // Inicializar la etiqueta del nivel aquí
+        configurarEstiloLabel();
+        this.imagenEnemigo = new Image("com/sebaescu/mavenproject1/" + getNombreImagen());
     }
 
     public ImageView getImageView() {
-        ImageView imageView = new ImageView(imagenEnemigo);
+        imageView = new ImageView(imagenEnemigo);
         imageView.setFitWidth(App.CELDA_SIZE);
         imageView.setFitHeight(App.CELDA_SIZE);
         return imageView;
@@ -53,6 +61,15 @@ public class Enemigo {
         return nivelPoder;
     }
 
+    public Label getLabelNivel() {
+        return labelNivel;
+    }
+
+    public void setNivelPoder(int nivelPoder) {
+        this.nivelPoder = nivelPoder;
+        actualizarTextoLabel();
+    }
+
     public boolean isDerrotado() {
         return derrotado;
     }
@@ -60,6 +77,7 @@ public class Enemigo {
     public void setDerrotado(boolean derrotado) {
         this.derrotado = derrotado;
     }
+
     public String getTipo() {
         return tipo;
     }
@@ -67,9 +85,24 @@ public class Enemigo {
     public void setTipo(String tipo) {
         this.tipo = tipo;
     }
+
+    private void actualizarTextoLabel() {
+        labelNivel.setText("Nivel " + nivelPoder);
+    }
+
+    private void configurarEstiloLabel() {
+        labelNivel.setFont(Font.font("Arial", 14));
+        labelNivel.setTextFill(Color.WHITE);
+    }
+
+    public void actualizarImagenEnemigoDerrotado() {
+        // Cambia la imagen del enemigo derrotado
+        if (derrotado) {
+            imageView.setImage(new Image("com/sebaescu/mavenproject1/" + tipo + "Derrotado.png"));
+        }
+    }
+
     public String getNombreImagen() {
         return tipo + (derrotado ? "Derrotado" : "") + ".png";
     }
-
 }
-

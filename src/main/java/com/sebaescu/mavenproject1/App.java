@@ -16,8 +16,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import javafx.scene.Node;
+import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
 
 public class App extends Application {
 
@@ -81,9 +84,9 @@ public class App extends Application {
         // Encontrar una celda de camino para que el jugador comience
         encontrarCeldaInicio();
 
-        jugador.getImageView().setImage(jugadorDer);
+        jugador.getImageView().setImage(jugadorDer);  
         gridPane.add(jugador.getImageView(), jugador.getColumna(), jugador.getFila());
-        
+        agregarEtiquetaNivelJugador(1,jugador.getImageView());
         generarCofres(9,4,FILAS,COLUMNAS);
         agregarCofresAlGrid();
         generarEnemigos(1, FILAS, COLUMNAS);
@@ -158,6 +161,8 @@ public class App extends Application {
 
             jugador.setFila(nuevaFila);
             jugador.setColumna(nuevaColumna);
+
+            actualizarPosicionEtiquetaNivelJugador(jugador.getImageView(), jugador.getLabelNivel());
 
             if (laberinto[jugador.getFila()][jugador.getColumna()] == 2) {
                 salidaImageView.setImage(new Image("com/sebaescu/mavenproject1/salida.png"));
@@ -295,7 +300,6 @@ public class App extends Application {
         }
     }
 
-
     private boolean esCeldaConCofre(int fila, int columna) {
         for (Cofre cofre : cofres) {
             if (cofre.getFila() == fila && cofre.getColumna() == columna) {
@@ -345,8 +349,70 @@ public class App extends Application {
         for (Enemigo enemigo : enemigos) {
             ImageView enemigoImageView = enemigo.getImageView();
             gridPane.add(enemigoImageView, enemigo.getColumna(), enemigo.getFila());
+
+            agregarEtiquetaNivel(enemigo.getNivelPoder(), enemigoImageView);
         }
     }
+
+    private void agregarEtiquetaNivel(int nivel, ImageView imageView) {
+        Label labelNivel = new Label("Nivel " + nivel);
+        labelNivel.setFont(Font.font("Arial", 14));
+        labelNivel.setTextFill(Color.WHITE);
+
+        // Verifica si la ImageView tiene una posición en el GridPane
+        Integer fila = GridPane.getRowIndex(imageView);
+        Integer columna = GridPane.getColumnIndex(imageView);
+
+        if (fila != null && columna != null) {
+            // Agrega el Label al GridPane y configura las coordenadas
+            gridPane.add(labelNivel, columna, fila);
+
+            // Ajusta la posición vertical
+            double yOffset = imageView.getBoundsInParent().getMinY() - 10;
+            labelNivel.setTranslateY(yOffset);
+        } else {
+            System.out.println("La ImageView no tiene posición en el GridPane.");
+        }
+    }
+
+    private void agregarEtiquetaNivelJugador(int nivel, ImageView imageView) {
+        Label labelNivel = new Label("Nivel " + nivel);
+        labelNivel.setFont(Font.font("Arial", 14));
+        labelNivel.setTextFill(Color.WHITE);
+
+        // Verifica si la ImageView del jugador tiene una posición en el GridPane
+        Integer fila = GridPane.getRowIndex(imageView);
+        Integer columna = GridPane.getColumnIndex(imageView);
+
+        if (fila != null && columna != null) {
+            // Agrega el Label al GridPane y configura las coordenadas
+            gridPane.add(labelNivel, columna, fila);
+
+            // Ajusta la posición vertical
+            double yOffset = imageView.getBoundsInParent().getMinY() - 10;
+            labelNivel.setTranslateY(yOffset);
+        } else {
+            System.out.println("La ImageView del jugador no tiene posición en el GridPane.");
+        }
+    }
+    private void actualizarPosicionEtiquetaNivelJugador(ImageView imageView, Label labelNivel) {
+        // Verifica si la ImageView del jugador tiene una posición en el GridPane
+        Integer fila = GridPane.getRowIndex(imageView);
+        Integer columna = GridPane.getColumnIndex(imageView);
+
+        if (fila != null && columna != null) {
+            // Actualiza las coordenadas del Label según la posición actual de la ImageView
+            gridPane.setRowIndex(labelNivel, fila);
+            gridPane.setColumnIndex(labelNivel, columna);
+
+            // Ajusta la posición vertical
+            double yOffset = imageView.getBoundsInParent().getMinY() - 10;
+            labelNivel.setTranslateY(yOffset);
+        } else {
+            System.out.println("La ImageView del jugador no tiene posición en el GridPane.");
+        }
+    }
+
     private void confrontarEnemigo() {
         int fila = jugador.getFila();
         int columna = jugador.getColumna();
@@ -376,20 +442,11 @@ public class App extends Application {
                 enemigo.setDerrotado(true);
                 System.out.println("Has derrotado al enemigo. ¡Bien hecho!");
 
-                // Encuentra la ImageView correspondiente al enemigo en el GridPane
-                for (Node node : gridPane.getChildren()) {
-                    if (node instanceof ImageView) {
-                        ImageView imageView = (ImageView) node;
-                        Enemigo enemigoEnImageView = (Enemigo) imageView.getUserData();
-                        if (enemigoEnImageView == enemigo) {
-                            // Obtener el nombre del archivo de la imagen del enemigo
-                            String nombreImagen = enemigo.getNombreImagen();
-                            // Cambiar la imagen del enemigo derrotado
-                            imageView.setImage(new Image(nombreImagen.replace(".png", "Derrotado.png")));
-                            break;
-                        }
-                    }
-                }
+                // Llama al método para actualizar la imagen del enemigo derrotado
+                enemigo.actualizarImagenEnemigoDerrotado();
+
+                // Deshabilitar la interacción con el enemigo derrotado
+                enemigo.getImageView().setDisable(true);
             } else {
                 System.out.println("No pudiste derrotar al enemigo. ¡Cuidado!");
                 // Aquí puedes implementar lógica adicional, como reducir la salud del jugador, etc.
@@ -398,7 +455,6 @@ public class App extends Application {
             System.out.println("El enemigo ya está derrotado. Puedes pasar.");
         }
     }
-
     private int calcularProbabilidad(int nivelEnemigo, int nivelJugador) {
         int diferenciaNiveles = nivelEnemigo - nivelJugador;
         return Math.max(50 - (diferenciaNiveles * 5), 0);
