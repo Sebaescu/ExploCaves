@@ -21,7 +21,7 @@ import javafx.scene.layout.GridPane;
 
 public class App extends Application {
 
-    private static final int CELDA_SIZE = 40;
+    public static final int CELDA_SIZE = 40;
     private static final int FILAS = 20;
     private static final int COLUMNAS = 20;
     private static final int FILAS_DIFICIL = FILAS * 2;
@@ -38,6 +38,7 @@ public class App extends Application {
     private Random random = new Random();
     private List<Cofre> cofres = new ArrayList<>();
     private boolean[][] cofresAbiertos; // Matriz para rastrear los cofres abiertos
+    private List<Enemigo> enemigos = new ArrayList<>();
 
     @Override
     public void start(Stage primaryStage) {
@@ -88,7 +89,8 @@ public class App extends Application {
         
         generarCofres(9,4,FILAS,COLUMNAS);
         agregarCofresAlGrid();
-        
+        generarEnemigos(1, FILAS, COLUMNAS);
+        agregarEnemigosAlGrid();
         Scene scene = new Scene(gridPane, COLUMNAS * CELDA_SIZE, FILAS * CELDA_SIZE);
         scene.widthProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS,FILAS));
         scene.heightProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS,FILAS));
@@ -284,6 +286,46 @@ public class App extends Application {
         }
         return false;
     }
+    private void generarEnemigos(int maxEnemigosPorTipo, int filas, int columnas) {
+        for (int i = 1; i <= 3; i++) { // Generar enemigos para cada tipo (1, 2, 3)
+            int cantidadEnemigos = (maxEnemigosPorTipo == 1) ? 1 : 2;
+
+            for (int j = 0; j < cantidadEnemigos; j++) {
+                int intentos = 0;
+
+                while (intentos < 100) { // Limitar la cantidad de intentos para evitar bucles infinitos
+                    int enemigoFila = random.nextInt(filas - 1) + 1;
+                    int enemigoColumna = random.nextInt(columnas - 1) + 1;
+
+                    if (laberinto[enemigoFila][enemigoColumna] == 0 && !hayCofreEnUbicacion(enemigoFila, enemigoColumna)
+                            && !hayEnemigoEnUbicacion(enemigoFila, enemigoColumna)) {
+                        Image imagenEnemigo = new Image("com/sebaescu/mavenproject1/Enemigo" + i + ".png");
+                        int nivelPoder = random.nextInt(4) + 1; // Nivel de poder entre 1 y 4
+
+                        enemigos.add(new Enemigo(enemigoFila, enemigoColumna, nivelPoder, imagenEnemigo));
+                        break; // Sale del bucle si el enemigo se agregó correctamente
+                    }
+                    intentos++;
+                }
+            }
+        }
+    }
+
+    private boolean hayEnemigoEnUbicacion(int fila, int columna) {
+        for (Enemigo enemigo : enemigos) {
+            if (enemigo.getFila() == fila && enemigo.getColumna() == columna) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void agregarEnemigosAlGrid() {
+        for (Enemigo enemigo : enemigos) {
+            ImageView enemigoImageView = enemigo.getImageView();
+            gridPane.add(enemigoImageView, enemigo.getColumna(), enemigo.getFila());
+        }
+    }
 
     public void startJuegoDificil(Stage primaryStage) {
         this.stage = primaryStage;
@@ -323,7 +365,8 @@ public class App extends Application {
         
         generarCofres(14,7,FILAS_DIFICIL,COLUMNAS_DIFICIL);
         agregarCofresAlGrid();
-        
+        generarEnemigos(2, FILAS_DIFICIL, COLUMNAS_DIFICIL);
+        agregarEnemigosAlGrid();
         Scene scene = new Scene(gridPane, COLUMNAS_DIFICIL * CELDA_SIZE_DIFICIL, FILAS_DIFICIL * CELDA_SIZE_DIFICIL);
         scene.widthProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS_DIFICIL,FILAS_DIFICIL));
         scene.heightProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS_DIFICIL,FILAS_DIFICIL));
