@@ -25,9 +25,9 @@ public class App extends Application {
     public static final int CELDA_SIZE = 40;
     private static final int FILAS = 20;
     private static final int COLUMNAS = 20;
-    private static final int FILAS_DIFICIL = FILAS * 2;
-    private static final int COLUMNAS_DIFICIL = COLUMNAS * 2;
-    private static final int    CELDA_SIZE_DIFICIL = CELDA_SIZE / 2;
+    private static final int FILAS_DIFICIL = ((int)Math.ceil(FILAS * 1.5));
+    private static final int COLUMNAS_DIFICIL = ((int)Math.ceil(COLUMNAS * 1.5));
+    private static final int CELDA_SIZE_DIFICIL = (int) ((int) CELDA_SIZE / 1.5);
     private Stage stage; // Referencia al escenario principal
     private Timeline timeline;
     private ImageView salidaImageView;
@@ -42,7 +42,7 @@ public class App extends Application {
     private List<Cofre> cofres = new ArrayList<>();
     private boolean[][] cofresAbiertos; // Matriz para rastrear los cofres abiertos
     private List<Enemigo> enemigos = new ArrayList<>();
-    private boolean generadoCofreEspecial = false,salidaEstaAbierta = false;
+    private boolean generadoCofreEspecial = false,salidaEstaAbierta = false,modoDificil = false;
 
     @Override
     public void start(Stage primaryStage) {
@@ -93,7 +93,7 @@ public class App extends Application {
         agregarEtiquetaNivel(jugador);
         generarCofres(9,4,FILAS,COLUMNAS);
         agregarCofresAlGrid();
-        generarEnemigos(1, FILAS, COLUMNAS);
+        generarEnemigos(4, FILAS, COLUMNAS,4);
         agregarEnemigosAlGrid();
         Scene scene = new Scene(gridPane, COLUMNAS * CELDA_SIZE, FILAS * CELDA_SIZE);
         scene.widthProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS,FILAS));
@@ -118,8 +118,13 @@ public class App extends Application {
         }
         if (code == KeyCode.F) {
             // Realizar la acción de combate al presionar la tecla F
-            confrontarEnemigo();
-            return;
+            if(modoDificil){
+                confrontarEnemigo(FILAS_DIFICIL,COLUMNAS_DIFICIL);
+                return;
+            }else{
+                confrontarEnemigo(FILAS,COLUMNAS);
+                return;
+            }
         }
         timeline = new Timeline(new KeyFrame(Duration.millis(80), event -> {
             int deltaFila = 0;
@@ -418,7 +423,9 @@ public class App extends Application {
         if (celdaSalida != null ) {
             // Cambiar la imagen de la celda de salida
             celdaSalida.setImage(new Image("com/sebaescu/mavenproject1/puertaAbierta.png"));
-        }
+        } 
+        
+        
     }
 
     // Método auxiliar para encontrar un ImageView por coordenadas
@@ -437,31 +444,27 @@ public class App extends Application {
         return null; // No se encontró ImageView para las coordenadas dadas
     }
 
-    private void generarEnemigos(int maxEnemigosPorTipo, int filas, int columnas) {
-        for (int i = 1; i <= 3; i++) { // Generar enemigos para cada tipo (1, 2, 3)
-            int cantidadEnemigos = (maxEnemigosPorTipo == 1) ? 1 : 2;
+    private void generarEnemigos(int cantidadEnemigosAGenerar, int filas, int columnas,int maxNivelPoder) {
+        for (int i = 0; i < cantidadEnemigosAGenerar; i++) {
+            int intentos = 0;
 
-            for (int j = 0; j < cantidadEnemigos; j++) {
-                int intentos = 0;
+            while (intentos < 100) { // Limitar la cantidad de intentos para evitar bucles infinitos
+                int enemigoFila = random.nextInt(filas - 1) + 1;
+                int enemigoColumna = random.nextInt(columnas - 1) + 1;
 
-                while (intentos < 100) { // Limitar la cantidad de intentos para evitar bucles infinitos
-                    int enemigoFila = random.nextInt(filas - 1) + 1;
-                    int enemigoColumna = random.nextInt(columnas - 1) + 1;
+                if (laberinto[enemigoFila][enemigoColumna] == 0 && !hayCofreEnUbicacion(enemigoFila, enemigoColumna)
+                        && !hayEnemigoEnUbicacion(enemigoFila, enemigoColumna)) {
+                    int nivelPoder = random.nextInt(maxNivelPoder) + 1; // Nivel de poder entre 1 y 5
+                    String tipoEnemigo = Enemigo.tiposDeEnemigos.get(random.nextInt(3)); // Obtén un tipo de enemigo aleatorio
 
-                    if (laberinto[enemigoFila][enemigoColumna] == 0 && !hayCofreEnUbicacion(enemigoFila, enemigoColumna)
-                            && !hayEnemigoEnUbicacion(enemigoFila, enemigoColumna)) {
-                        int tipoEnemigoIndex = i - 1; // Obtén el índice del tipo de enemigo
-                        String tipoEnemigo = Enemigo.tiposDeEnemigos.get(tipoEnemigoIndex); // Obtén el tipo de enemigo según el índice
-                        int nivelPoder = random.nextInt(4) + 1; // Nivel de poder entre 1 y 4
-
-                        enemigos.add(new Enemigo(enemigoFila, enemigoColumna, nivelPoder, tipoEnemigo));
-                        break; // Sale del bucle si el enemigo se agregó correctamente
-                    }
-                    intentos++;
+                    enemigos.add(new Enemigo(enemigoFila, enemigoColumna, nivelPoder, tipoEnemigo));
+                    break; // Sale del bucle si el enemigo se agregó correctamente
                 }
+                intentos++;
             }
         }
     }
+
     private int[] celdaCaminoMasCercana(Jugador jugador) {
         int jugadorFila = jugador.getFila();
         int jugadorColumna = jugador.getColumna();
@@ -478,14 +481,22 @@ public class App extends Application {
             int nuevaColumna = jugadorColumna + dir[1];
 
             // Verifica si la nueva celda está dentro de los límites del laberinto
-            if (nuevaFila >= 0 && nuevaFila < FILAS && nuevaColumna >= 0 && nuevaColumna < COLUMNAS) {
-                // Verifica si la nueva celda no es un obstáculo
-                if (laberinto[nuevaFila][nuevaColumna] == 0) {
-                    return new int[]{nuevaFila, nuevaColumna};
+            if(modoDificil){
+                if (nuevaFila >= 0 && nuevaFila < FILAS_DIFICIL && nuevaColumna >= 0 && nuevaColumna < COLUMNAS_DIFICIL) {
+                    // Verifica si la nueva celda no es un obstáculo
+                    if (laberinto[nuevaFila][nuevaColumna] == 0) {
+                        return new int[]{nuevaFila, nuevaColumna};
+                    }
                 }
-            }
+            }else{
+                if (nuevaFila >= 0 && nuevaFila < FILAS && nuevaColumna >= 0 && nuevaColumna < COLUMNAS) {
+                    // Verifica si la nueva celda no es un obstáculo
+                    if (laberinto[nuevaFila][nuevaColumna] == 0) {
+                        return new int[]{nuevaFila, nuevaColumna};
+                    }
+                }
+            }          
         }
-
         // Si no se encuentra ninguna celda válida, devuelve la celda actual del jugador
         return new int[]{jugadorFila, jugadorColumna};
     }
@@ -503,6 +514,13 @@ public class App extends Application {
             // Puedes agregar el enemigo a tu lista de enemigos aquí si es necesario
             Enemigo nuevoEnemigo = new Enemigo(enemigoFila, enemigoColumna, nivelPoder, tipoEnemigo);
             enemigos.add(nuevoEnemigo);
+            if(modoDificil){
+                nuevoEnemigo.getImageView().setFitHeight(CELDA_SIZE_DIFICIL);
+                nuevoEnemigo.getImageView().setFitWidth(CELDA_SIZE_DIFICIL);
+            }else{
+                nuevoEnemigo.getImageView().setFitHeight(CELDA_SIZE);
+                nuevoEnemigo.getImageView().setFitWidth(CELDA_SIZE);
+            }  
             gridPane.add(nuevoEnemigo.getImageView(), enemigoColumna, enemigoFila);
             // Llama al método existente para agregar la etiqueta del nivel del enemigo
             agregarEtiquetaNivelEnemigo(nuevoEnemigo);
@@ -572,13 +590,13 @@ public class App extends Application {
         jugador.getLabelNivel().setTranslateY(offsetY - 20);
     }
 
-    private void confrontarEnemigo() {
+    private void confrontarEnemigo(int filas, int columnas) {
         int fila = jugador.getFila();
         int columna = jugador.getColumna();
 
         // Verifica enemigos en un radio de 1 alrededor del jugador
-        for (int i = Math.max(0, fila - 1); i <= Math.min(FILAS - 1, fila + 1); i++) {
-            for (int j = Math.max(0, columna - 1); j <= Math.min(COLUMNAS - 1, columna + 1); j++) {
+        for (int i = Math.max(0, fila - 1); i <= Math.min(filas - 1, fila + 1); i++) {
+            for (int j = Math.max(0, columna - 1); j <= Math.min(columnas - 1, columna + 1); j++) {
                 if (i != fila || j != columna) {  // Excluye la posición del jugador
                     confrontarEnemigoEnPosicion(i, j);
                 }
@@ -596,22 +614,28 @@ public class App extends Application {
     }
     private void confrontar(Enemigo enemigo) {
         if (!enemigo.isDerrotado()) {
-            if (jugador.getNivel() >= enemigo.getNivelPoder()) {
+            if (jugador.getNivel() > enemigo.getNivelPoder()) {
                 // El jugador tiene un nivel superior al enemigo, derrotarlo automáticamente
                 enemigo.setDerrotado(true);
                 System.out.println("Has derrotado al enemigo. ¡Bien hecho!");
 
                 // Llama al método para actualizar la imagen del enemigo derrotado
                 enemigo.getImageView().setImage(new Image("com/sebaescu/mavenproject1/" + enemigo.getTipo() + "Derrotado.png"));
+                if(modoDificil){
+                    enemigo.getImageView().setFitHeight(CELDA_SIZE_DIFICIL);
+                    enemigo.getImageView().setFitWidth(CELDA_SIZE_DIFICIL);
+                }
                 // Deshabilitar la interacción con el enemigo derrotado
                 enemigo.getImageView().setDisable(true);
             } else {
                 // El jugador no tiene un nivel superior, realizar la lógica original
-                int probabilidad = calcularProbabilidad(enemigo.getNivelPoder(), jugador.getNivel());
-                if (random.nextInt(100) < probabilidad) {
+                int probabilidadDerrotar = calcularProbabilidad(enemigo.getNivelPoder(), jugador.getNivel());
+                System.out.println(probabilidadDerrotar);
+                int probabilidad = random.nextInt(100);
+                System.out.println(probabilidad);
+                if ( probabilidadDerrotar > probabilidad) {
                     enemigo.setDerrotado(true);
                     System.out.println("Has derrotado al enemigo. ¡Bien hecho!");
-
                     // Llama al método para actualizar la imagen del enemigo derrotado              
                     enemigo.getImageView().setImage(new Image("com/sebaescu/mavenproject1/" + enemigo.getTipo() + "Derrotado.png"));
                     // Deshabilitar la interacción con el enemigo derrotado
@@ -631,7 +655,7 @@ public class App extends Application {
     
     private int calcularProbabilidad(int nivelEnemigo, int nivelJugador) {
         int diferenciaNiveles = nivelEnemigo - nivelJugador;
-        return Math.max(50 - (diferenciaNiveles * 5), 0);
+        return (int) Math.ceil(50/Math.pow(2, diferenciaNiveles));
     }
     public void startJuegoDificil(Stage primaryStage) {
         this.stage = primaryStage;
@@ -651,6 +675,8 @@ public class App extends Application {
                     case 2:
                         salidaImageView = new ImageView(new Image("com/sebaescu/mavenproject1/puertaCerrada.png"));
                         imageView = salidaImageView;
+                        salidaFila = i;
+                        salidaColumna = j;
                         break;
                     default:
                         imageView = new ImageView(new Image("com/sebaescu/mavenproject1/camino.png"));
@@ -665,15 +691,16 @@ public class App extends Application {
         encontrarCeldaInicio();
 
         encontrarCeldaInicio();
-
+        agregarEtiquetaNivel(jugador);
         jugador.getImageView().setImage(jugadorDer);
         gridPane.add(jugador.getImageView(), jugador.getColumna(), jugador.getFila());
         
         generarCofres(14,7,FILAS_DIFICIL,COLUMNAS_DIFICIL);
         agregarCofresAlGrid();
-        generarEnemigos(2, FILAS_DIFICIL, COLUMNAS_DIFICIL);
+        generarEnemigos(8, FILAS_DIFICIL, COLUMNAS_DIFICIL,5);
         agregarEnemigosAlGrid();
         Scene scene = new Scene(gridPane, COLUMNAS_DIFICIL * CELDA_SIZE_DIFICIL, FILAS_DIFICIL * CELDA_SIZE_DIFICIL);
+        modoDificil =true;
         scene.widthProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS_DIFICIL,FILAS_DIFICIL));
         scene.heightProperty().addListener((observable, oldValue, newValue) -> escalarImagenes(COLUMNAS_DIFICIL,FILAS_DIFICIL));
         scene.setOnKeyPressed(event -> manejarTeclaPresionada(event.getCode(),FILAS_DIFICIL,COLUMNAS_DIFICIL));
