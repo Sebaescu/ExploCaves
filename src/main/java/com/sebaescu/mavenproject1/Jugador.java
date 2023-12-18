@@ -63,9 +63,13 @@ public class Jugador {
 
     public void aumentarNivel() {
         nivel++;
+        System.out.println(nivel);
         actualizarTextoLabel(); // Actualizar el texto del label al aumentar el nivel
     }
-
+    public void disminuirNivel() {
+        nivel--;
+        actualizarTextoLabel(); // Actualizar el texto del label al aumentar el nivel
+    }
     private void actualizarTextoLabel() {
         labelNivel.setText("Nivel " + nivel);
     }
@@ -74,24 +78,6 @@ public class Jugador {
         // Configurar el estilo del label según tus necesidades
         labelNivel.setFont(Font.font("Arial", 14));
         labelNivel.setTextFill(Color.WHITE);
-    }
-
-    // Métodos adicionales para combatir y calcular la probabilidad de derrota
-    public boolean combatir(Enemigo enemigo) {
-        double probabilidadDerrota = calcularProbabilidadDerrota(enemigo.getNivelPoder());
-        double resultadoCombate = Math.random();
-        boolean jugadorGana = resultadoCombate < probabilidadDerrota;
-
-        if (jugadorGana) {
-            aumentarNivel();
-        }
-
-        return jugadorGana;
-    }
-
-    private double calcularProbabilidadDerrota(int nivelEnemigo) {
-        int diferenciaNiveles = nivelEnemigo - nivel;
-        return Math.max(0.5, 0.5 - (diferenciaNiveles / 2.0) * 0.1);
     }
     
 }

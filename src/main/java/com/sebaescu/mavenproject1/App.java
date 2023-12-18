@@ -27,7 +27,7 @@ public class App extends Application {
     private static final int COLUMNAS = 20;
     private static final int FILAS_DIFICIL = FILAS * 2;
     private static final int COLUMNAS_DIFICIL = COLUMNAS * 2;
-    private static final int CELDA_SIZE_DIFICIL = CELDA_SIZE / 2;
+    private static final int    CELDA_SIZE_DIFICIL = CELDA_SIZE / 2;
     private Stage stage; // Referencia al escenario principal
     private Timeline timeline;
     private ImageView salidaImageView;
@@ -35,11 +35,14 @@ public class App extends Application {
     private Image jugadorDer = new Image("com/sebaescu/mavenproject1/JugadorDer.png");
     private Image jugadorIzq = new Image("com/sebaescu/mavenproject1/JugadorIzq.png");
     private GridPane gridPane;
+    private int cantidadCofresBuenos,cantidadCofresTrampa,cantidadCofresEspecial=0;
+    private int salidaFila,salidaColumna;
     private int[][] laberinto;
     private Random random = new Random();
     private List<Cofre> cofres = new ArrayList<>();
     private boolean[][] cofresAbiertos; // Matriz para rastrear los cofres abiertos
     private List<Enemigo> enemigos = new ArrayList<>();
+    private boolean generadoCofreEspecial = false;;
 
     @Override
     public void start(Stage primaryStage) {
@@ -68,6 +71,9 @@ public class App extends Application {
                     case 2:
                         salidaImageView = new ImageView(new Image("com/sebaescu/mavenproject1/puertaCerrada.png"));
                         imageView = salidaImageView;
+                        // Almacena las coordenadas de la celda de salida
+                        salidaFila = i;
+                        salidaColumna = j;
                         break;
                     default:
                         imageView = new ImageView(new Image("com/sebaescu/mavenproject1/camino.png"));
@@ -163,8 +169,8 @@ public class App extends Application {
             actualizarPosicionEtiquetaNivel(jugador);
 
             if (laberinto[jugador.getFila()][jugador.getColumna()] == 2) {
-                salidaImageView.setImage(new Image("com/sebaescu/mavenproject1/salida.png"));
-                mostrarMensaje("¡Has ganado!");
+                //aasalidaImageView.setImage(new Image("com/sebaescu/mavenproject1/puertaAbierta.png"));
+                //mostrarMensaje("¡Has ganado!");
             }
         }
     }
@@ -231,19 +237,100 @@ public class App extends Application {
         } while (true);
     }
     private void generarCofres(int cantidad, int distanciaMinima, int filas, int columnas) {
-        // Lógica para generar cofres en ubicaciones aleatorias de camino
-        for (int i = 0; i < cantidad; i++) {
-            int intentos = 0;
-            while (intentos < 100) { // Limitar la cantidad de intentos para evitar bucles infinitos
-                int cofreFila = random.nextInt(filas - 1) + 1;
-                int cofreColumna = random.nextInt(columnas - 1) + 1;
+        cantidadCofresBuenos = (int) (cantidad * 0.6);
+        cantidadCofresTrampa = cantidad - cantidadCofresBuenos;
 
-                if (laberinto[cofreFila][cofreColumna] == 0 && !hayCofreEnUbicacion(cofreFila, cofreColumna) && cumpleDistanciaMinima(cofreFila, cofreColumna, distanciaMinima)) {
-                    cofres.add(new Cofre(cofreFila, cofreColumna, new Image("com/sebaescu/mavenproject1/cofreCerrado.png")));
-                    break; // Sale del bucle si el cofre se agregó correctamente
-                }
-                intentos++;
+        // Lógica para generar cofres buenos en ubicaciones aleatorias de camino
+        for (int i = 0; i < cantidadCofresBuenos; i++) {
+            boolean esCofreEspecial = !generadoCofreEspecial && i == 0;
+            generarCofre(distanciaMinima, filas, columnas, "cofreBueno", esCofreEspecial);
+            if (esCofreEspecial) {
+                generadoCofreEspecial = true;
             }
+        }
+
+        // Lógica para generar cofres trampa en ubicaciones aleatorias de camino
+        for (int i = 0; i < cantidadCofresTrampa; i++) {
+            generarCofre(distanciaMinima, filas, columnas, "cofreTrampa", false);
+        }
+
+        // Verificar si ya se generó el cofre que abre la puerta
+        if (!generadoCofreEspecial) {
+            generarCofre(distanciaMinima, filas, columnas, "cofreEspecial", true);
+        }
+    }
+
+    private void generarCofre(int distanciaMinima, int filas, int columnas, String tipoCofre, boolean esCambiaImagen) {
+        int intentos = 0;
+        int cantidadMaximaCofres = cantidadCofresBuenos + cantidadCofresTrampa + cantidadCofresEspecial;
+
+        while (intentos < 100 && cofres.size() < cantidadMaximaCofres) {
+            int cofreFila = random.nextInt(filas - 1) + 1;
+            int cofreColumna = random.nextInt(columnas - 1) + 1;
+
+            // Verificar si la distancia mínima a otros cofres se cumple
+            if (cumpleDistanciaMinima(cofreFila, cofreColumna, distanciaMinima) &&
+                laberinto[cofreFila][cofreColumna] == 0 &&
+                !hayCofreEnUbicacion(cofreFila, cofreColumna)) {
+                Image imagenCofre = new Image("com/sebaescu/mavenproject1/cofreCerrado.png");
+                Cofre nuevoCofre = new Cofre(cofreFila, cofreColumna, imagenCofre, tipoCofre, esCambiaImagen && tipoCofre.equals("cofreEspecial"));
+                cofres.add(nuevoCofre);
+
+                if (nuevoCofre.getTipoCofre().equals("cofreEspecial")) {
+                    cantidadCofresEspecial++;
+                } else if (nuevoCofre.getTipoCofre().equals("cofreBueno")) {
+                    cantidadCofresBuenos--;
+                } else if (nuevoCofre.getTipoCofre().equals("cofreTrampa")) {
+                    cantidadCofresTrampa--;
+                }
+
+                if (cofres.size() == cantidadMaximaCofres) {
+                    break;
+                }
+            }
+
+            intentos++;
+        }
+    }
+
+
+    private boolean cumpleDistanciaMinima(int fila, int columna, int distanciaMinima) {
+        for (Cofre cofre : cofres) {
+            int distancia = Math.abs(cofre.getFila() - fila) + Math.abs(cofre.getColumna() - columna);
+            if (distancia < distanciaMinima) {
+                return false;
+            }
+        }
+        return true;
+    }
+    /*private void generarCofreBueno(int distanciaMinima, int filas, int columnas) {
+        int intentos = 0;
+        boolean cofreConCambioDeImagenGenerado = false;
+
+        while (intentos < 100 && !cofreConCambioDeImagenGenerado) {
+            int cofreFila = random.nextInt(filas - 1) + 1;
+            int cofreColumna = random.nextInt(columnas - 1) + 1;
+
+            if (laberinto[cofreFila][cofreColumna] == 0 && !hayCofreEnUbicacion(cofreFila, cofreColumna) && cumpleDistanciaMinima(cofreFila, cofreColumna, distanciaMinima)) {
+                boolean cambiaImagen = !cofreConCambioDeImagenGenerado && random.nextBoolean();
+                cofres.add(new Cofre(cofreFila, cofreColumna, new Image("com/sebaescu/mavenproject1/cofreCerrado.png"), true, cambiaImagen));
+                cofreConCambioDeImagenGenerado = cambiaImagen;
+            }
+            intentos++;
+        }
+    }
+
+    private void generarCofreTrampa(int distanciaMinima, int filas, int columnas) {
+        int intentos = 0;
+        while (intentos < 100) { // Limitar la cantidad de intentos para evitar bucles infinitos
+            int cofreFila = random.nextInt(filas - 1) + 1;
+            int cofreColumna = random.nextInt(columnas - 1) + 1;
+
+            if (laberinto[cofreFila][cofreColumna] == 0 && !hayCofreEnUbicacion(cofreFila, cofreColumna) && cumpleDistanciaMinima(cofreFila, cofreColumna, distanciaMinima)) {
+                cofres.add(new Cofre(cofreFila, cofreColumna, new Image("com/sebaescu/mavenproject1/cofreCerrado.png"), false, false));
+                break; // Sale del bucle si el cofre trampa se agregó correctamente
+            }
+            intentos++;
         }
     }
 
@@ -256,9 +343,7 @@ public class App extends Application {
             }
         }
         return true;
-    }
-
-
+    }*/
 
     private boolean hayCofreEnUbicacion(int fila, int columna) {
         for (Cofre cofre : cofres) {
@@ -283,22 +368,74 @@ public class App extends Application {
 
         if (esCeldaConCofre(fila, columna) && !cofresAbiertos[fila][columna]) {
             cofresAbiertos[fila][columna] = true;
-
+            // Cambiar la imagen del cofre por cofreAbierto.png
             for (Node node : gridPane.getChildren()) {
                 if (node instanceof ImageView) {
                     ImageView imageView = (ImageView) node;
                     int row = GridPane.getRowIndex(imageView);
                     int col = GridPane.getColumnIndex(imageView);
-
-                    if (row == fila && col == columna) {
+                     if (row == fila && col == columna) {
                         imageView.setImage(new Image("com/sebaescu/mavenproject1/cofreAbierto.png"));
+                     }
+                }
+            }
+            for (Cofre cofre : cofres) {
+                if (cofre.getFila() == fila && cofre.getColumna() == columna) {
+                    String tipoCofre = cofre.getTipoCofre();
+
+                    switch (tipoCofre) {
+                        case "cofreBueno":
+                            jugador.aumentarNivel();
+                            System.out.println("¡Has encontrado un cofre bueno! Tu nivel ha aumentado.");
+                            break;
+                        case "cofreTrampa":
+                            aplicarLogicaCofreTrampa();
+                            break;
+                        case "cofreEspecial":
+                            aplicarLogicaCofreEspecial();
+                            break;
                     }
+                    break; // No necesitas seguir buscando
                 }
             }
 
+            if (jugador.getNivel() <= 0) {
+                mostrarMensaje("¡Perdiste!", "¡Tu nivel ha llegado a 0! Has perdido la partida.");
+            }
             jugador.getImageView().setImage(jugadorDer);
         }
     }
+
+    private void aplicarLogicaCofreTrampa() {
+        Random random = new Random();
+        double probabilidad = random.nextDouble();
+
+        if (probabilidad < 0.6) {
+            jugador.disminuirNivel();
+            System.out.println("¡Es un cofre trampa! Has perdido un nivel.");
+            if (jugador.getNivel() <= 0) {
+                mostrarMensaje("¡Perdiste!", "¡Tu nivel ha llegado a 0! Has perdido la partida.");
+            }
+        } else if (probabilidad < 0.95) {
+            int nivelEnemigo = (probabilidad < 0.8) ? 3 : 4;
+            int nivelPoder = random.nextInt(2) + 3;
+            generarEnemigo(jugador, nivelPoder);
+            System.out.println("¡Es un cofre trampa! Ha aparecido un enemigo de nivel " + nivelEnemigo + ".");
+        } else {
+            mostrarMensaje("¡Perdiste!", "¡Es un cofre trampa! Pierdes la partida.");
+        }
+    }
+
+    private void aplicarLogicaCofreEspecial() {
+        if (!generadoCofreEspecial) {
+            cambiarImagenCeldaSalida();
+            generadoCofreEspecial = true;
+            System.out.println("¡Has encontrado un cofre especial! La celda de salida ahora es una puerta abierta.");
+        } else {
+            System.out.println("¡Has encontrado un cofre especial! Pero ya has abierto uno antes.");
+        }
+    }
+
 
     private boolean esCeldaConCofre(int fila, int columna) {
         for (Cofre cofre : cofres) {
@@ -308,6 +445,33 @@ public class App extends Application {
         }
         return false;
     }
+    private void cambiarImagenCeldaSalida() {
+        // Obtener el ImageView de la celda de salida
+        ImageView celdaSalida = encontrarImageViewPorCoordenadas(salidaFila, salidaColumna);
+
+        // Verificar si se encontró el ImageView y si el jugador ha abierto un cofre que cambia la imagen
+        if (celdaSalida != null ) {
+            // Cambiar la imagen de la celda de salida
+            celdaSalida.setImage(new Image("com/sebaescu/mavenproject1/puertaAbierta.png"));
+        }
+    }
+
+    // Método auxiliar para encontrar un ImageView por coordenadas
+    private ImageView encontrarImageViewPorCoordenadas(int fila, int columna) {
+        for (Node node : gridPane.getChildren()) {
+            if (node instanceof ImageView) {
+                ImageView imageView = (ImageView) node;
+                int row = GridPane.getRowIndex(imageView);
+                int col = GridPane.getColumnIndex(imageView);
+
+                if (row == fila && col == columna) {
+                    return imageView;
+                }
+            }
+        }
+        return null; // No se encontró ImageView para las coordenadas dadas
+    }
+
     private void generarEnemigos(int maxEnemigosPorTipo, int filas, int columnas) {
         for (int i = 1; i <= 3; i++) { // Generar enemigos para cada tipo (1, 2, 3)
             int cantidadEnemigos = (maxEnemigosPorTipo == 1) ? 1 : 2;
@@ -333,8 +497,52 @@ public class App extends Application {
             }
         }
     }
+    private int[] celdaCaminoMasCercana(Jugador jugador) {
+        int jugadorFila = jugador.getFila();
+        int jugadorColumna = jugador.getColumna();
 
+        // Define las direcciones posibles (arriba, abajo, izquierda, derecha)
+        int[][] direcciones = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
 
+        // Mezcla aleatoriamente las direcciones para mayor variedad
+        Collections.shuffle(Arrays.asList(direcciones));
+
+        // Busca la celda más cercana que no sea un obstáculo
+        for (int[] dir : direcciones) {
+            int nuevaFila = jugadorFila + dir[0];
+            int nuevaColumna = jugadorColumna + dir[1];
+
+            // Verifica si la nueva celda está dentro de los límites del laberinto
+            if (nuevaFila >= 0 && nuevaFila < FILAS && nuevaColumna >= 0 && nuevaColumna < COLUMNAS) {
+                // Verifica si la nueva celda no es un obstáculo
+                if (laberinto[nuevaFila][nuevaColumna] == 0) {
+                    return new int[]{nuevaFila, nuevaColumna};
+                }
+            }
+        }
+
+        // Si no se encuentra ninguna celda válida, devuelve la celda actual del jugador
+        return new int[]{jugadorFila, jugadorColumna};
+    }
+
+    private void generarEnemigo(Jugador jugador, int nivelPoder) {
+        int[] celdaEnemigo = celdaCaminoMasCercana(jugador);
+        int enemigoFila = celdaEnemigo[0];
+        int enemigoColumna = celdaEnemigo[1];
+
+        if (!hayCofreEnUbicacion(enemigoFila, enemigoColumna) && !hayEnemigoEnUbicacion(enemigoFila, enemigoColumna)) {
+            // Obtén el tipo de enemigo según algún criterio (puedes personalizar esta lógica)
+            int tipoEnemigoIndex = random.nextInt(3); // Se elige un tipo de enemigo aleatorio
+            String tipoEnemigo = Enemigo.tiposDeEnemigos.get(tipoEnemigoIndex);
+
+            // Puedes agregar el enemigo a tu lista de enemigos aquí si es necesario
+            Enemigo nuevoEnemigo = new Enemigo(enemigoFila, enemigoColumna, nivelPoder, tipoEnemigo);
+            enemigos.add(nuevoEnemigo);
+            gridPane.add(nuevoEnemigo.getImageView(), enemigoColumna, enemigoFila);
+            // Llama al método existente para agregar la etiqueta del nivel del enemigo
+            agregarEtiquetaNivelEnemigo(nuevoEnemigo);
+        }
+    }
 
     private boolean hayEnemigoEnUbicacion(int fila, int columna) {
         for (Enemigo enemigo : enemigos) {
@@ -423,20 +631,33 @@ public class App extends Application {
     }
     private void confrontar(Enemigo enemigo) {
         if (!enemigo.isDerrotado()) {
-            int probabilidad = calcularProbabilidad(enemigo.getNivelPoder(), jugador.getNivel());
-            if (random.nextInt(100) < probabilidad) {
+            if (jugador.getNivel() >= enemigo.getNivelPoder()) {
+                // El jugador tiene un nivel superior al enemigo, derrotarlo automáticamente
                 enemigo.setDerrotado(true);
                 System.out.println("Has derrotado al enemigo. ¡Bien hecho!");
 
                 // Llama al método para actualizar la imagen del enemigo derrotado
-                System.out.println(enemigo.getImageView().getImage().getUrl());
                 enemigo.getImageView().setImage(new Image("com/sebaescu/mavenproject1/" + enemigo.getTipo() + "Derrotado.png"));
-                System.out.println(enemigo.getImageView().getImage().getUrl());
                 // Deshabilitar la interacción con el enemigo derrotado
                 enemigo.getImageView().setDisable(true);
             } else {
-                System.out.println("No pudiste derrotar al enemigo. ¡Cuidado!");
-                // Aquí puedes implementar lógica adicional, como reducir la salud del jugador, etc.
+                // El jugador no tiene un nivel superior, realizar la lógica original
+                int probabilidad = calcularProbabilidad(enemigo.getNivelPoder(), jugador.getNivel());
+                if (random.nextInt(100) < probabilidad) {
+                    enemigo.setDerrotado(true);
+                    System.out.println("Has derrotado al enemigo. ¡Bien hecho!");
+
+                    // Llama al método para actualizar la imagen del enemigo derrotado              
+                    enemigo.getImageView().setImage(new Image("com/sebaescu/mavenproject1/" + enemigo.getTipo() + "Derrotado.png"));
+                    // Deshabilitar la interacción con el enemigo derrotado
+                    enemigo.getImageView().setDisable(true);
+                } else {
+                    System.out.println("No pudiste derrotar al enemigo. ¡Cuidado!");
+                    jugador.disminuirNivel();
+                    if (jugador.getNivel() <= 0) {
+                        mostrarMensaje("¡Perdiste!","¡Tu nivel ha llegado a 0! Has perdido la partida.");
+                    }
+                }
             }
         } else {
             System.out.println("El enemigo ya está derrotado. Puedes pasar.");
@@ -549,12 +770,12 @@ public class App extends Application {
         salidaImageView.setFitWidth(nuevoAncho);
         salidaImageView.setFitHeight(nuevoAlto);
     }
-    private void mostrarMensaje(String mensaje) {
+    private void mostrarMensaje(String mensaje,String mensaje2) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("¡Ganaste!");
+            alert.setTitle(mensaje);
             alert.setHeaderText(null);
-            alert.setContentText(mensaje);
+            alert.setContentText(mensaje2);
             alert.setOnHidden(event -> volverAlMenu());
             alert.show();
             detenerMovimiento();

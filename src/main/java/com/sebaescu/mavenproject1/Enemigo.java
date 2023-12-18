@@ -102,7 +102,6 @@ public class Enemigo {
         // Cambia la imagen del enemigo derrotado
         if (isDerrotado()) {
             getImageView().setImage(new Image("com/sebaescu/mavenproject1/" + tipo + "Derrotado.png"));
-            System.out.println("Imagen del enemigo derrotado actualizada a: " + tipo+ "Derrotado.png");
         }
     }
 
