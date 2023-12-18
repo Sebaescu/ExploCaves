@@ -42,7 +42,7 @@ public class App extends Application {
     private List<Cofre> cofres = new ArrayList<>();
     private boolean[][] cofresAbiertos; // Matriz para rastrear los cofres abiertos
     private List<Enemigo> enemigos = new ArrayList<>();
-    private boolean generadoCofreEspecial = false;;
+    private boolean generadoCofreEspecial = false,salidaEstaAbierta = false;
 
     @Override
     public void start(Stage primaryStage) {
@@ -126,17 +126,17 @@ public class App extends Application {
             int deltaColumna = 0;
 
             switch (code) {
-                case W:
+                case UP:
                     deltaFila = -1;
                     break;
-                case S:
+                case DOWN:
                     deltaFila = 1;
                     break;
-                case A:
+                case LEFT:
                     deltaColumna = -1;
                     jugador.getImageView().setImage(jugadorIzq);
                     break;
-                case D:
+                case RIGHT:
                     deltaColumna = 1;
                     jugador.getImageView().setImage(jugadorDer);
                     break;
@@ -167,10 +167,9 @@ public class App extends Application {
             jugador.setColumna(nuevaColumna);
 
             actualizarPosicionEtiquetaNivel(jugador);
-
-            if (laberinto[jugador.getFila()][jugador.getColumna()] == 2) {
+            if (laberinto[jugador.getFila()][jugador.getColumna()] == 2 && salidaEstaAbierta) {
                 //aasalidaImageView.setImage(new Image("com/sebaescu/mavenproject1/puertaAbierta.png"));
-                //mostrarMensaje("¡Has ganado!");
+                mostrarMensaje("¡Has ganado!","Lograste Escapar");
             }
         }
     }
@@ -236,30 +235,39 @@ public class App extends Application {
             }
         } while (true);
     }
+    
     private void generarCofres(int cantidad, int distanciaMinima, int filas, int columnas) {
-        cantidadCofresBuenos = (int) (cantidad * 0.6);
-        cantidadCofresTrampa = cantidad - cantidadCofresBuenos;
+        // Lógica para generar cofres en ubicaciones aleatorias de camino
+        int cofresBuenosAGenerar = (int) Math.ceil((cantidad - 1) * 0.6);
+        int cofresTrampaAGenerar = cantidad - 1 - cofresBuenosAGenerar;
+        String tipoCofre;
+        Image imagenCofre = new Image("com/sebaescu/mavenproject1/cofreCerrado.png");    
+        boolean cofrePuertaGenerado = false;
+        for (int i = 0; i < cantidad; i++) {
+            int intentos = 0;
+            while (intentos < 100) { // Limitar la cantidad de intentos para evitar bucles infinitos
+                int cofreFila = random.nextInt(filas - 1) + 1;
+                int cofreColumna = random.nextInt(columnas - 1) + 1;
 
-        // Lógica para generar cofres buenos en ubicaciones aleatorias de camino
-        for (int i = 0; i < cantidadCofresBuenos; i++) {
-            boolean esCofreEspecial = !generadoCofreEspecial && i == 0;
-            generarCofre(distanciaMinima, filas, columnas, "cofreBueno", esCofreEspecial);
-            if (esCofreEspecial) {
-                generadoCofreEspecial = true;
+                if (laberinto[cofreFila][cofreColumna] == 0 && !hayCofreEnUbicacion(cofreFila, cofreColumna) && cumpleDistanciaMinima(cofreFila, cofreColumna, distanciaMinima)) {
+                    if(cofrePuertaGenerado == false){
+                        Cofre cofreEspecial = new Cofre(cofreFila, cofreColumna, imagenCofre, "cofreEspecial", true);
+                        cofres.add(cofreEspecial);
+                        cofrePuertaGenerado = true;
+                    }
+                    if (i < cofresBuenosAGenerar) {
+                        tipoCofre = "cofreBueno";
+                    } else {
+                        tipoCofre = "cofreTrampa";
+                    }
+                    Cofre cofre = new Cofre(cofreFila, cofreColumna, imagenCofre, tipoCofre, false);
+                    cofres.add(cofre);
+                    break; // Sale del bucle si el cofre se agregó correctamente
+                }
+                intentos++;
             }
         }
-
-        // Lógica para generar cofres trampa en ubicaciones aleatorias de camino
-        for (int i = 0; i < cantidadCofresTrampa; i++) {
-            generarCofre(distanciaMinima, filas, columnas, "cofreTrampa", false);
-        }
-
-        // Verificar si ya se generó el cofre que abre la puerta
-        if (!generadoCofreEspecial) {
-            generarCofre(distanciaMinima, filas, columnas, "cofreEspecial", true);
-        }
     }
-
     private void generarCofre(int distanciaMinima, int filas, int columnas, String tipoCofre, boolean esCambiaImagen) {
         int intentos = 0;
         int cantidadMaximaCofres = cantidadCofresBuenos + cantidadCofresTrampa + cantidadCofresEspecial;
@@ -303,48 +311,6 @@ public class App extends Application {
         }
         return true;
     }
-    /*private void generarCofreBueno(int distanciaMinima, int filas, int columnas) {
-        int intentos = 0;
-        boolean cofreConCambioDeImagenGenerado = false;
-
-        while (intentos < 100 && !cofreConCambioDeImagenGenerado) {
-            int cofreFila = random.nextInt(filas - 1) + 1;
-            int cofreColumna = random.nextInt(columnas - 1) + 1;
-
-            if (laberinto[cofreFila][cofreColumna] == 0 && !hayCofreEnUbicacion(cofreFila, cofreColumna) && cumpleDistanciaMinima(cofreFila, cofreColumna, distanciaMinima)) {
-                boolean cambiaImagen = !cofreConCambioDeImagenGenerado && random.nextBoolean();
-                cofres.add(new Cofre(cofreFila, cofreColumna, new Image("com/sebaescu/mavenproject1/cofreCerrado.png"), true, cambiaImagen));
-                cofreConCambioDeImagenGenerado = cambiaImagen;
-            }
-            intentos++;
-        }
-    }
-
-    private void generarCofreTrampa(int distanciaMinima, int filas, int columnas) {
-        int intentos = 0;
-        while (intentos < 100) { // Limitar la cantidad de intentos para evitar bucles infinitos
-            int cofreFila = random.nextInt(filas - 1) + 1;
-            int cofreColumna = random.nextInt(columnas - 1) + 1;
-
-            if (laberinto[cofreFila][cofreColumna] == 0 && !hayCofreEnUbicacion(cofreFila, cofreColumna) && cumpleDistanciaMinima(cofreFila, cofreColumna, distanciaMinima)) {
-                cofres.add(new Cofre(cofreFila, cofreColumna, new Image("com/sebaescu/mavenproject1/cofreCerrado.png"), false, false));
-                break; // Sale del bucle si el cofre trampa se agregó correctamente
-            }
-            intentos++;
-        }
-    }
-
-    private boolean cumpleDistanciaMinima(int fila, int columna, int distanciaMinima) {
-        // Verifica si hay al menos la distancia mínima especificada de celdas de camino entre el cofre y cualquier otro cofre existente
-        for (Cofre cofreExistente : cofres) {
-            int distancia = Math.abs(fila - cofreExistente.getFila()) + Math.abs(columna - cofreExistente.getColumna());
-            if (distancia < distanciaMinima) {
-                return false;
-            }
-        }
-        return true;
-    }*/
-
     private boolean hayCofreEnUbicacion(int fila, int columna) {
         for (Cofre cofre : cofres) {
             if (cofre.getFila() == fila && cofre.getColumna() == columna) {
@@ -360,6 +326,7 @@ public class App extends Application {
             cofreImageView.setFitWidth(CELDA_SIZE_DIFICIL);
             cofreImageView.setFitHeight(CELDA_SIZE_DIFICIL);
             gridPane.add(cofreImageView, cofre.getColumna(), cofre.getFila());
+            System.out.println(cofre.getTipoCofre());
         }
     }
     private void abrirCofre() {
@@ -380,6 +347,7 @@ public class App extends Application {
                 }
             }
             for (Cofre cofre : cofres) {
+                
                 if (cofre.getFila() == fila && cofre.getColumna() == columna) {
                     String tipoCofre = cofre.getTipoCofre();
 
@@ -397,10 +365,6 @@ public class App extends Application {
                     }
                     break; // No necesitas seguir buscando
                 }
-            }
-
-            if (jugador.getNivel() <= 0) {
-                mostrarMensaje("¡Perdiste!", "¡Tu nivel ha llegado a 0! Has perdido la partida.");
             }
             jugador.getImageView().setImage(jugadorDer);
         }
@@ -430,6 +394,7 @@ public class App extends Application {
         if (!generadoCofreEspecial) {
             cambiarImagenCeldaSalida();
             generadoCofreEspecial = true;
+            salidaEstaAbierta = true;
             System.out.println("¡Has encontrado un cofre especial! La celda de salida ahora es una puerta abierta.");
         } else {
             System.out.println("¡Has encontrado un cofre especial! Pero ya has abierto uno antes.");
